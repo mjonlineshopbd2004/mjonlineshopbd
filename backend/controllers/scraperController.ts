@@ -52,12 +52,13 @@ export const scrapeProduct = async (req: Request, res: Response) => {
         const searchResponse = await ai.models.generateContent({
           model: "gemini-3-flash-preview",
           contents: `Find product information for this URL: ${url}. 
-          I need the product name, price in BDT (numeric), a good description, and at least 3 high-quality product image URLs.
+          I need the product name, price in BDT (numeric), a summarized description (max 300 words), and at least 3 high-quality product image URLs.
           If you can't access the URL directly, use Google Search to find the product details from other sources or cached versions.`,
           config: {
-            systemInstruction: "You are a product data extractor. You MUST return ONLY a valid JSON object matching the requested schema. Do not include any conversational text, markdown formatting, or explanations.",
+            systemInstruction: "You are a product data extractor. You MUST return ONLY a valid JSON object matching the requested schema. Be concise. Do not include any conversational text, markdown formatting, or explanations.",
             tools: [{ googleSearch: {} }],
             responseMimeType: "application/json",
+            maxOutputTokens: 2048,
             responseSchema: {
               type: Type.OBJECT,
               properties: {
@@ -104,7 +105,7 @@ export const scrapeProduct = async (req: Request, res: Response) => {
     // Remove scripts, styles, and other non-content elements to reduce token usage
     $('script, style, noscript, iframe, header, footer, nav').remove();
     const cleanHtml = $('body').html() || html;
-    const textContent = cleanHtml.substring(0, 30000); // Limit text to avoid token limits
+    const textContent = cleanHtml.substring(0, 15000); // Reduced from 30000 to avoid token limits
 
     console.log('Using Gemini to parse product data...');
     
@@ -122,14 +123,15 @@ export const scrapeProduct = async (req: Request, res: Response) => {
         - price: number (numeric value only, convert to BDT if needed. 1 CNY = 16 BDT, 1 USD = 110 BDT)
         - originalPrice: string (The price as seen on the website, e.g. "¥15.00" or "$10.00")
         - category: string (A suitable category name)
-        - description: string (HTML or plain text, summarized)
-        - images: string[] (absolute URLs of product images)
+        - description: string (Summarized description, max 300 words)
+        - images: string[] (absolute URLs of product images, max 10)
         - sizes: string[] (available sizes)
         - colors: string[] (available colors)
-        - specifications: { key: string, value: string }[] (key-value pairs of product details)`,
+        - specifications: { key: string, value: string }[] (key-value pairs of product details, max 15)`,
         config: {
-          systemInstruction: "You are a product data extractor. You MUST return ONLY a valid JSON object matching the requested schema. Do not include any conversational text, markdown formatting, or explanations.",
+          systemInstruction: "You are a product data extractor. You MUST return ONLY a valid JSON object matching the requested schema. Be concise. Do not include any conversational text, markdown formatting, or explanations.",
           responseMimeType: "application/json",
+          maxOutputTokens: 2048,
           responseSchema: {
             type: Type.OBJECT,
             properties: {

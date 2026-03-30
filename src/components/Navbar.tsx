@@ -71,6 +71,9 @@ export default function Navbar() {
             { inlineData: { mimeType: file.type, data: base64Data } }
           ]
         },
+        config: {
+          maxOutputTokens: 100,
+        }
       });
 
       const keywords = response.text?.trim();
