@@ -186,6 +186,8 @@ export default function AdminProductForm() {
         description: data.description || prev.description,
         images: data.images && data.images.length > 0 ? data.images : prev.images,
         sourceUrl: data.sourceUrl || prev.sourceUrl,
+        sizes: data.sizes && data.sizes.length > 0 ? data.sizes : prev.sizes,
+        colors: data.colors && data.colors.length > 0 ? data.colors : prev.colors,
         specifications: data.specifications && data.specifications.length > 0 ? data.specifications : prev.specifications
       }));
 
@@ -228,6 +230,50 @@ export default function AdminProductForm() {
     setFormData(prev => ({
       ...prev,
       specifications: prev.specifications?.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addSize = () => {
+    setFormData(prev => ({
+      ...prev,
+      sizes: [...(prev.sizes || []), '']
+    }));
+  };
+
+  const updateSize = (index: number, value: string) => {
+    setFormData(prev => {
+      const newSizes = [...(prev.sizes || [])];
+      newSizes[index] = value;
+      return { ...prev, sizes: newSizes };
+    });
+  };
+
+  const removeSize = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      sizes: prev.sizes?.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addColor = () => {
+    setFormData(prev => ({
+      ...prev,
+      colors: [...(prev.colors || []), '']
+    }));
+  };
+
+  const updateColor = (index: number, value: string) => {
+    setFormData(prev => {
+      const newColors = [...(prev.colors || [])];
+      newColors[index] = value;
+      return { ...prev, colors: newColors };
+    });
+  };
+
+  const removeColor = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      colors: prev.colors?.filter((_, i) => i !== index)
     }));
   };
 
@@ -434,6 +480,91 @@ export default function AdminProductForm() {
                   value={formData.discountPrice || ''}
                   onChange={(e) => setFormData({ ...formData, discountPrice: e.target.value ? Number(e.target.value) : undefined })}
                 />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-black flex items-center gap-3 text-white">
+                <Settings className="h-5 w-5 text-emerald-500" />
+                Variants (Sizes & Colors)
+              </h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Sizes */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Available Sizes</label>
+                  <button
+                    type="button"
+                    onClick={addSize}
+                    className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg hover:bg-emerald-500/20 transition-all"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {formData.sizes?.map((size, idx) => (
+                    <div key={idx} className="relative group">
+                      <input
+                        type="text"
+                        placeholder="Size"
+                        className="w-20 bg-white/5 border border-white/10 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500 transition-all font-bold text-white text-xs"
+                        value={size}
+                        onChange={(e) => updateSize(idx, e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeSize(idx)}
+                        className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-lg"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {(!formData.sizes || formData.sizes.length === 0) && (
+                    <p className="text-xs text-gray-500 font-bold italic">No sizes added.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Colors */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Available Colors</label>
+                  <button
+                    type="button"
+                    onClick={addColor}
+                    className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg hover:bg-emerald-500/20 transition-all"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {formData.colors?.map((color, idx) => (
+                    <div key={idx} className="relative group">
+                      <input
+                        type="text"
+                        placeholder="Color"
+                        className="w-24 bg-white/5 border border-white/10 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500 transition-all font-bold text-white text-xs"
+                        value={color}
+                        onChange={(e) => updateColor(idx, e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeColor(idx)}
+                        className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-lg"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {(!formData.colors || formData.colors.length === 0) && (
+                    <p className="text-xs text-gray-500 font-bold italic">No colors added.</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>

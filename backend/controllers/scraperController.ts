@@ -66,6 +66,14 @@ export const scrapeProduct = async (req: Request, res: Response) => {
                 images: {
                   type: Type.ARRAY,
                   items: { type: Type.STRING }
+                },
+                sizes: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING }
+                },
+                colors: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING }
                 }
               },
               required: ["name", "price", "description", "images"]
@@ -108,6 +116,8 @@ export const scrapeProduct = async (req: Request, res: Response) => {
         - price: number (numeric value only)
         - description: string (HTML or plain text)
         - images: string[] (absolute URLs of product images)
+        - sizes: string[] (available sizes like S, M, L, XL or numeric sizes)
+        - colors: string[] (available colors like Red, Blue, Black)
         - specifications: { key: string, value: string }[] (key-value pairs of product details like Material, Weight, etc.)`,
         config: {
           responseMimeType: "application/json",
@@ -118,6 +128,14 @@ export const scrapeProduct = async (req: Request, res: Response) => {
               price: { type: Type.NUMBER },
               description: { type: Type.STRING },
               images: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING }
+              },
+              sizes: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING }
+              },
+              colors: {
                 type: Type.ARRAY,
                 items: { type: Type.STRING }
               },

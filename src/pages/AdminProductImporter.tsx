@@ -30,6 +30,8 @@ interface ImportedProduct {
   images: string[];
   category: string;
   sourceUrl: string;
+  sizes?: string[];
+  colors?: string[];
   specifications?: { key: string; value: string }[];
 }
 
@@ -62,6 +64,8 @@ export default function AdminProductImporter() {
       - description: A clear, summarized description of the product in English.
       - images: An array of high-quality image URLs for the product.
       - category: A suitable category name for the product.
+      - sizes: An array of available sizes (e.g., ["S", "M", "L"] or ["38", "40"]).
+      - colors: An array of available colors (e.g., ["Red", "Blue"]).
       
       If you cannot find specific details, provide your best estimate based on the page content.`;
 
@@ -82,7 +86,15 @@ export default function AdminProductImporter() {
                 type: Type.ARRAY,
                 items: { type: Type.STRING }
               },
-              category: { type: Type.STRING }
+              category: { type: Type.STRING },
+              sizes: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING }
+              },
+              colors: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING }
+              }
             },
             required: ["title", "price", "description", "images", "category"]
           }
@@ -139,6 +151,8 @@ export default function AdminProductImporter() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         sourceUrl: product.sourceUrl,
+        sizes: product.sizes || [],
+        colors: product.colors || [],
         specifications: product.specifications || []
       };
 
@@ -297,6 +311,34 @@ export default function AdminProductImporter() {
                       <Layers className="h-4 w-4 text-blue-500" />
                       <span className="text-sm font-bold text-blue-500">{product.category}</span>
                     </div>
+                  </div>
+
+                  {/* Sizes & Colors Preview */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {product.sizes && product.sizes.length > 0 && (
+                      <div className="space-y-2">
+                        <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Sizes</h3>
+                        <div className="flex flex-wrap gap-1">
+                          {product.sizes.map(size => (
+                            <span key={size} className="px-2 py-1 bg-white/5 border border-white/10 rounded-md text-[10px] font-bold text-gray-400">
+                              {size}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {product.colors && product.colors.length > 0 && (
+                      <div className="space-y-2">
+                        <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Colors</h3>
+                        <div className="flex flex-wrap gap-1">
+                          {product.colors.map(color => (
+                            <span key={color} className="px-2 py-1 bg-white/5 border border-white/10 rounded-md text-[10px] font-bold text-gray-400">
+                              {color}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">
