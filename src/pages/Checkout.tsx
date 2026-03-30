@@ -73,7 +73,7 @@ export default function Checkout() {
     phone: profile?.phone || '',
     address: profile?.address || '',
     deliveryArea: 'inside-dhaka' as 'inside-dhaka' | 'outside-dhaka',
-    paymentMethod: 'cod' as 'bkash' | 'nagad' | 'rocket' | 'card' | 'cod',
+    paymentMethod: 'cod' as 'bkash' | 'nagad' | 'rocket' | 'cod',
     transactionId: '',
     customerNote: '',
     paymentScreenshot: '',
@@ -179,34 +179,6 @@ export default function Checkout() {
       try {
         const docRef = await addDoc(collection(db, 'orders'), orderData);
         
-        if (formData.paymentMethod === 'card') {
-          const idToken = await user.getIdToken();
-          const baseUrl = import.meta.env.VITE_APP_URL || '';
-          const response = await fetch(`${baseUrl}/api/payment/init`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${idToken}`
-            },
-            body: JSON.stringify({
-              orderId: docRef.id,
-              total,
-              customerName: formData.name,
-              customerEmail: user.email,
-              phone: formData.phone,
-              address: formData.address
-            })
-          });
-
-          const paymentData = await response.json();
-          if (paymentData.url) {
-            window.location.href = paymentData.url;
-            return;
-          } else {
-            toast.error('Failed to initialize payment. Please try again.');
-          }
-        }
-
         clearCart();
         navigate(`/order-confirmation/${docRef.id}`);
         toast.success('Order placed successfully!');
@@ -354,7 +326,7 @@ export default function Checkout() {
                 ))}
               </div>
               
-              {formData.paymentMethod !== 'cod' && formData.paymentMethod !== 'card' && (
+              {formData.paymentMethod !== 'cod' && (
                 <div className="mt-6 p-6 bg-orange-50 rounded-3xl border border-orange-100 space-y-6">
                   <div>
                     <p className="text-orange-800 font-bold mb-2">Payment Instructions:</p>
@@ -416,14 +388,7 @@ export default function Checkout() {
                 </div>
               )}
 
-              {formData.paymentMethod === 'card' && (
-                <div className="mt-6 p-6 bg-orange-50 rounded-3xl border border-orange-100">
-                  <p className="text-orange-800 font-bold mb-2">Bank/Card Payment:</p>
-                  <p className="text-orange-700 text-sm">
-                    After placing the order, our representative will contact you with the bank details or a secure payment link.
-                  </p>
-                </div>
-              )}
+              {/* Removed Bank/Card Payment section */}
             </section>
           </form>
         </div>

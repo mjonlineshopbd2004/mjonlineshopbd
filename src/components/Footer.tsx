@@ -86,26 +86,12 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-gray-800 pt-8 flex flex-col items-center space-y-8">
-          <div className="w-full">
-            <p className="text-center text-sm font-bold text-gray-400 mb-4 uppercase tracking-widest">We Accept</p>
-            <div className="bg-white/5 p-4 rounded-2xl flex justify-center items-center">
-              <img 
-                src={getProxyUrl("https://securepay.sslcommerz.com/gw/images/SSLCommerz-Pay-With-logo-All-Size-02.png")} 
-                alt="Payment Methods" 
-                className="max-w-full h-auto"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-          </div>
-          
-          <div className="flex flex-col md:flex-row justify-between items-center w-full">
-            <p className="text-sm text-gray-500 mb-4 md:mb-0">
-              © {new Date().getFullYear()} {settings.storeName}. All rights reserved.
-            </p>
-            <div className="flex items-center space-x-4">
-              <p className="text-xs text-gray-600 font-bold">Secure Payment Powered by SSLCommerz</p>
-            </div>
+        <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center w-full">
+          <p className="text-sm text-gray-500 mb-4 md:mb-0">
+            © {new Date().getFullYear()} {settings.storeName}. All rights reserved.
+          </p>
+          <div className="flex items-center space-x-4">
+            <p className="text-xs text-gray-600 font-bold">Secure Payment & Fast Delivery</p>
           </div>
         </div>
       </div>

@@ -74,24 +74,6 @@ async function startServer() {
 
       let response = await fetchImage(imageUrl, referer);
       
-      // If 404 and it's an SSLCommerz URL, try different versions
-      if (response.status === 404 && imageUrl.includes('sslcommerz.com')) {
-        const versions = ['03', '02', '05', '01'];
-        const currentVersionMatch = imageUrl.match(/All-Size-(\d+)\.png/);
-        const currentVersion = currentVersionMatch ? currentVersionMatch[1] : '';
-        
-        for (const version of versions) {
-          if (version === currentVersion) continue;
-          const fallbackUrl = imageUrl.replace(/All-Size-\d+\.png/, `All-Size-${version}.png`);
-          console.log(`Proxy: 404 on SSLCommerz ${currentVersion}, trying fallback: ${version}`);
-          const fallbackResponse = await fetchImage(fallbackUrl, referer);
-          if (fallbackResponse.status === 200) {
-            response = fallbackResponse;
-            break;
-          }
-        }
-      }
-
       // If 404 and it's an alicdn URL, try different subdomains and patterns
       if (response.status === 404 && imageUrl.includes('alicdn.com')) {
         const subdomains = ['img.alicdn.com', 'cbu01.alicdn.com', 'gw.alicdn.com', 'ae01.alicdn.com'];

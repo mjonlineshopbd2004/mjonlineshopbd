@@ -31,7 +31,6 @@ export function getProxyUrl(url: string) {
 
   // List of domains that MUST be proxied due to strict referrer/hotlinking policies
   const mustProxy = [
-    'sslcommerz.com',
     'alicdn.com',
     '1688.com',
     'amazon.com',

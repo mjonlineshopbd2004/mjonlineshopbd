@@ -145,6 +145,23 @@ export default function AdminSettings() {
     fetchSettings();
   }, []);
 
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  const handleLogoUpload = async (file: File) => {
+    if (!user) return;
+    setUploadingLogo(true);
+    try {
+      const idToken = await user.getIdToken();
+      const url = await uploadFile(file, idToken);
+      setSettings({ ...settings, logoUrl: url });
+      toast.success('Logo uploaded successfully');
+    } catch (error) {
+      toast.error('Failed to upload logo');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   const handleBannerUpload = async (index: number, file: File, isSmall: boolean = false) => {
     if (!user) return;
     setUploadingIndex(isSmall ? index + 100 : index);
@@ -228,14 +245,42 @@ export default function AdminSettings() {
               />
             </div>
             <div className="space-y-3">
-              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-2">Logo URL (Optional)</label>
-              <input
-                type="text"
-                value={settings.logoUrl || ''}
-                onChange={(e) => setSettings({ ...settings, logoUrl: e.target.value })}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-emerald-500 transition-all font-bold text-white"
-                placeholder="https://example.com/logo.png"
-              />
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-2">Store Logo</label>
+              <div className="flex items-center gap-6">
+                <div className="relative group h-24 w-24 bg-white/5 rounded-2xl border border-white/10 overflow-hidden flex items-center justify-center">
+                  {settings.logoUrl ? (
+                    <img src={getProxyUrl(settings.logoUrl)} alt="Logo" className="h-full w-full object-contain p-2" />
+                  ) : (
+                    <div className="text-gray-500 font-black text-2xl">{settings.storeName.charAt(0)}</div>
+                  )}
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <label className="cursor-pointer p-2 text-white hover:scale-110 transition-transform">
+                      <Upload className="h-5 w-5" />
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={(e) => e.target.files?.[0] && handleLogoUpload(e.target.files[0])}
+                      />
+                    </label>
+                  </div>
+                  {uploadingLogo && (
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                      <Loader2 className="h-6 w-6 text-emerald-500 animate-spin" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <input
+                    type="text"
+                    value={settings.logoUrl || ''}
+                    onChange={(e) => setSettings({ ...settings, logoUrl: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-3 outline-none focus:border-emerald-500 transition-all font-bold text-white text-sm"
+                    placeholder="Logo URL (Optional)"
+                  />
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest px-2">Recommended: Square PNG with transparent background</p>
+                </div>
+              </div>
             </div>
             <div className="space-y-3">
               <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-2">Hotline Number</label>

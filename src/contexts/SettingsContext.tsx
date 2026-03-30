@@ -49,7 +49,7 @@ interface SettingsContextType {
 const defaultSettings: SiteSettings = {
   storeName: 'MJ ONLINE SHOP BD',
   shopTagline: 'Premium Online Shop',
-  logoUrl: 'https://picsum.photos/seed/mjshop/512/512',
+  logoUrl: '',
   phone: '01810580592',
   whatsappNumber: '01810580592',
   paymentNumber: '01810580592',

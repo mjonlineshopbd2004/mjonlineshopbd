@@ -19,7 +19,6 @@ export const PAYMENT_METHODS = [
   { id: 'bkash', name: 'bKash', icon: '📱' },
   { id: 'nagad', name: 'Nagad', icon: '📱' },
   { id: 'rocket', name: 'Rocket', icon: '📱' },
-  { id: 'card', name: 'Bank or Card', icon: '💳' },
   { id: 'cod', name: 'Cash on Delivery', icon: '🚚' }
 ];
 
