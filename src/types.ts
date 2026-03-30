@@ -29,6 +29,7 @@ export interface Product {
   stock: number;
   sizes?: string[];
   colors?: string[];
+  colorVariants?: { name: string; image: string }[];
   rating: number;
   reviewsCount: number;
   featured?: boolean;

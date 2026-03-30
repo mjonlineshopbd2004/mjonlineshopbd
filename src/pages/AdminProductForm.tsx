@@ -34,6 +34,7 @@ export default function AdminProductForm() {
     sourceUrl: '',
     sizes: [],
     colors: [],
+    colorVariants: [],
     featured: false,
     trending: false,
     rating: 5,
@@ -274,6 +275,28 @@ export default function AdminProductForm() {
     setFormData(prev => ({
       ...prev,
       colors: prev.colors?.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addColorVariant = () => {
+    setFormData(prev => ({
+      ...prev,
+      colorVariants: [...(prev.colorVariants || []), { name: '', image: '' }]
+    }));
+  };
+
+  const updateColorVariant = (index: number, field: 'name' | 'image', value: string) => {
+    setFormData(prev => {
+      const newVariants = [...(prev.colorVariants || [])];
+      newVariants[index] = { ...newVariants[index], [field]: value };
+      return { ...prev, colorVariants: newVariants };
+    });
+  };
+
+  const removeColorVariant = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      colorVariants: prev.colorVariants?.filter((_, i) => i !== index)
     }));
   };
 
@@ -564,6 +587,70 @@ export default function AdminProductForm() {
                   {(!formData.colors || formData.colors.length === 0) && (
                     <p className="text-xs text-gray-500 font-bold italic">No colors added.</p>
                   )}
+                </div>
+              </div>
+
+              {/* Color Variants (with Images) */}
+              <div className="col-span-full space-y-4 pt-4 border-t border-white/5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Color Variants (with Images)</label>
+                  <button
+                    type="button"
+                    onClick={addColorVariant}
+                    className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg hover:bg-emerald-500/20 transition-all"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {formData.colorVariants?.map((variant, idx) => (
+                    <div key={idx} className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-4 relative group">
+                      <button
+                        type="button"
+                        onClick={() => removeColorVariant(idx)}
+                        className="absolute top-2 right-2 p-1.5 bg-red-500/10 text-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                      
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Color Name</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Midnight Black"
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 focus:outline-none focus:border-emerald-500 transition-all font-bold text-white text-sm"
+                          value={variant.name}
+                          onChange={(e) => updateColorVariant(idx, 'name', e.target.value)}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Variant Image</label>
+                        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                          {formData.images?.map((img, imgIdx) => (
+                            <button
+                              key={imgIdx}
+                              type="button"
+                              onClick={() => updateColorVariant(idx, 'image', img)}
+                              className={cn(
+                                "w-12 h-12 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0",
+                                variant.image === img ? "border-emerald-500" : "border-transparent opacity-50"
+                              )}
+                            >
+                              <img src={getProxyUrl(img)} className="w-full h-full object-cover" />
+                            </button>
+                          ))}
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Or paste image URL"
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 focus:outline-none focus:border-emerald-500 transition-all font-bold text-white text-xs"
+                          value={variant.image}
+                          onChange={(e) => updateColorVariant(idx, 'image', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

@@ -36,6 +36,7 @@ import AdminTransactions from './pages/AdminTransactions';
 import AdminReviews from './pages/AdminReviews';
 import AdminProductImporter from './pages/AdminProductImporter';
 import SplashScreen from './components/SplashScreen';
+import FaviconUpdater from './components/FaviconUpdater';
 import { AnimatePresence, motion } from 'motion/react';
 import { useLocation } from 'react-router-dom';
 
@@ -126,6 +127,7 @@ export default function App() {
   return (
     <AuthProvider>
       <SettingsProvider>
+        <FaviconUpdater />
         <CartProvider>
           <WishlistProvider>
             <Router>

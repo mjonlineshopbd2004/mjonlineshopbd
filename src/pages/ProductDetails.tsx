@@ -8,7 +8,7 @@ import { formatPrice, calculateDiscount, cn, getProxyUrl } from '../lib/utils';
 import { useCart } from '../contexts/CartContext';
 import { useWishlist } from '../contexts/WishlistContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Star, ShoppingCart, ShoppingBag, Heart, Truck, ShieldCheck, RefreshCw, ChevronRight, ChevronLeft, Plus, Minus, MessageSquare, Send } from 'lucide-react';
+import { Star, ShoppingCart, ShoppingBag, Heart, Truck, ShieldCheck, RefreshCw, ChevronRight, Check, ChevronLeft, Plus, Minus, MessageSquare, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import ProductCard from '../components/ProductCard';
 
@@ -283,46 +283,77 @@ export default function ProductDetails() {
           )}
 
           <div className="space-y-8 mb-10">
-            {/* Size Selection */}
-            {product.sizes && product.sizes.length > 0 && (
+            {/* Color Selection */}
+            {((product.colors && product.colors.length > 0) || (product.colorVariants && product.colorVariants.length > 0)) && (
               <div>
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-4">Select Size</h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Color Family</h3>
+                  <span className="text-sm font-bold text-gray-400">:</span>
+                  <span className="text-sm font-bold text-gray-900">{selectedColor || 'Select Color'}</span>
+                </div>
                 <div className="flex flex-wrap gap-3">
-                  {product.sizes.map(size => (
+                  {/* Text-based colors */}
+                  {product.colors?.map(color => (
                     <button
-                      key={size}
-                      onClick={() => setSelectedSize(size)}
+                      key={color}
+                      onClick={() => setSelectedColor(color)}
                       className={cn(
-                        "w-14 h-14 rounded-2xl flex items-center justify-center font-bold transition-all border-2",
-                        selectedSize === size
-                          ? "bg-gray-900 border-gray-900 text-white shadow-xl"
+                        "px-6 py-3 rounded-xl font-bold transition-all border-2",
+                        selectedColor === color
+                          ? "border-orange-500 bg-orange-50 text-orange-600 shadow-sm"
                           : "bg-white border-gray-100 text-gray-600 hover:border-gray-900"
                       )}
                     >
-                      {size}
+                      {color}
+                    </button>
+                  ))}
+                  
+                  {/* Image-based color variants */}
+                  {product.colorVariants?.map((variant, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedColor(variant.name)}
+                      className={cn(
+                        "relative w-16 h-16 rounded-xl overflow-hidden border-2 transition-all group",
+                        selectedColor === variant.name
+                          ? "border-orange-500 shadow-md scale-105"
+                          : "border-gray-100 opacity-80 hover:opacity-100 hover:border-gray-300"
+                      )}
+                      title={variant.name}
+                    >
+                      <img src={getProxyUrl(variant.image)} alt={variant.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      {selectedColor === variant.name && (
+                        <div className="absolute bottom-0 right-0 bg-orange-500 text-white p-0.5 rounded-tl-lg">
+                          <Check className="h-3 w-3" />
+                        </div>
+                      )}
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Color Selection */}
-            {product.colors && product.colors.length > 0 && (
+            {/* Size Selection */}
+            {product.sizes && product.sizes.length > 0 && (
               <div>
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-4">Select Color</h3>
-                <div className="flex flex-wrap gap-4">
-                  {product.colors.map(color => (
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Size</h3>
+                  <span className="text-sm font-bold text-gray-400">:</span>
+                  <span className="text-sm font-bold text-gray-900">{selectedSize || 'Select Size'}</span>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {product.sizes.map(size => (
                     <button
-                      key={color}
-                      onClick={() => setSelectedColor(color)}
+                      key={size}
+                      onClick={() => setSelectedSize(size)}
                       className={cn(
-                        "px-6 py-3 rounded-2xl font-bold transition-all border-2",
-                        selectedColor === color
-                          ? "bg-gray-900 border-gray-900 text-white shadow-xl"
+                        "min-w-[4rem] h-14 px-4 rounded-xl flex items-center justify-center font-bold transition-all border-2",
+                        selectedSize === size
+                          ? "border-orange-500 bg-orange-50 text-orange-600 shadow-sm"
                           : "bg-white border-gray-100 text-gray-600 hover:border-gray-900"
                       )}
                     >
-                      {color}
+                      {size}
                     </button>
                   ))}
                 </div>
@@ -336,14 +367,14 @@ export default function ProductDetails() {
                 <div className="flex items-center bg-gray-50 rounded-2xl p-1 border border-gray-100">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="p-3 text-gray-600 hover:bg-white hover:shadow-sm rounded-xl transition-all"
+                    className="p-3 text-gray-400 hover:text-gray-900 hover:bg-white hover:shadow-sm rounded-xl transition-all"
                   >
                     <Minus className="h-5 w-5" />
                   </button>
-                  <span className="w-12 text-center font-bold text-xl">{quantity}</span>
+                  <span className="w-12 text-center font-bold text-xl text-gray-900">{quantity}</span>
                   <button
                     onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-                    className="p-3 text-gray-600 hover:bg-white hover:shadow-sm rounded-xl transition-all"
+                    className="p-3 text-gray-400 hover:text-gray-900 hover:bg-white hover:shadow-sm rounded-xl transition-all"
                   >
                     <Plus className="h-5 w-5" />
                   </button>
