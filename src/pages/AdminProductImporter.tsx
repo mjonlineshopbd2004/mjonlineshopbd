@@ -70,12 +70,20 @@ export default function AdminProductImporter() {
         body: JSON.stringify({ url })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to fetch product data');
+      const contentType = response.headers.get('content-type');
+      let data;
+      
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.error('Non-JSON response from scraper:', text);
+        throw new Error(`Server returned an unexpected response: ${text.substring(0, 100)}...`);
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch product data');
+      }
       
       // Map backend fields to frontend fields
       const importedProduct: ImportedProduct = {

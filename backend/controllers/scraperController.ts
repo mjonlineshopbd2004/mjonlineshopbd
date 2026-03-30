@@ -55,6 +55,7 @@ export const scrapeProduct = async (req: Request, res: Response) => {
           I need the product name, price in BDT (numeric), a good description, and at least 3 high-quality product image URLs.
           If you can't access the URL directly, use Google Search to find the product details from other sources or cached versions.`,
           config: {
+            systemInstruction: "You are a product data extractor. You MUST return ONLY a valid JSON object matching the requested schema. Do not include any conversational text, markdown formatting, or explanations.",
             tools: [{ googleSearch: {} }],
             responseMimeType: "application/json",
             responseSchema: {
@@ -83,7 +84,10 @@ export const scrapeProduct = async (req: Request, res: Response) => {
           }
         });
 
-        const searchData = JSON.parse(searchResponse.text);
+        const text = searchResponse.text.trim();
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        const searchData = JSON.parse(jsonMatch ? jsonMatch[0] : text);
+        
         console.log('Gemini Search successfully found data:', searchData.name);
         return res.json({
           ...searchData,
@@ -124,6 +128,7 @@ export const scrapeProduct = async (req: Request, res: Response) => {
         - colors: string[] (available colors)
         - specifications: { key: string, value: string }[] (key-value pairs of product details)`,
         config: {
+          systemInstruction: "You are a product data extractor. You MUST return ONLY a valid JSON object matching the requested schema. Do not include any conversational text, markdown formatting, or explanations.",
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -162,7 +167,9 @@ export const scrapeProduct = async (req: Request, res: Response) => {
         }
       });
 
-      const data = JSON.parse(geminiResponse.text);
+      const text = geminiResponse.text.trim();
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      const data = JSON.parse(jsonMatch ? jsonMatch[0] : text);
       console.log('Gemini successfully parsed data:', data.name);
 
       // Ensure image URLs are absolute
