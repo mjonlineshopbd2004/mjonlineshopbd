@@ -91,7 +91,7 @@ export default function Footer() {
             <p className="text-center text-sm font-bold text-gray-400 mb-4 uppercase tracking-widest">We Accept</p>
             <div className="bg-white/5 p-4 rounded-2xl flex justify-center items-center">
               <img 
-                src={getProxyUrl("https://securepay.sslcommerz.com/gw/images/SSLCommerz-Pay-With-logo-All-Size-03.png")} 
+                src={getProxyUrl("https://securepay.sslcommerz.com/gw/images/SSLCommerz-Pay-With-logo-All-Size-02.png")} 
                 alt="Payment Methods" 
                 className="max-w-full h-auto"
                 referrerPolicy="no-referrer"

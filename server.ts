@@ -66,11 +66,31 @@ async function startServer() {
         referer = 'https://www.amazon.com/';
       } else if (imageUrl.includes('daraz.com')) {
         referer = 'https://www.daraz.com.bd/';
+      } else if (imageUrl.includes('slatic.net') || imageUrl.includes('laz-img')) {
+        referer = 'https://www.daraz.com.bd/';
       } else {
         referer = urlObj.origin;
       }
 
       let response = await fetchImage(imageUrl, referer);
+      
+      // If 404 and it's an SSLCommerz URL, try different versions
+      if (response.status === 404 && imageUrl.includes('sslcommerz.com')) {
+        const versions = ['03', '02', '05', '01'];
+        const currentVersionMatch = imageUrl.match(/All-Size-(\d+)\.png/);
+        const currentVersion = currentVersionMatch ? currentVersionMatch[1] : '';
+        
+        for (const version of versions) {
+          if (version === currentVersion) continue;
+          const fallbackUrl = imageUrl.replace(/All-Size-\d+\.png/, `All-Size-${version}.png`);
+          console.log(`Proxy: 404 on SSLCommerz ${currentVersion}, trying fallback: ${version}`);
+          const fallbackResponse = await fetchImage(fallbackUrl, referer);
+          if (fallbackResponse.status === 200) {
+            response = fallbackResponse;
+            break;
+          }
+        }
+      }
 
       // If 404 and it's an alicdn URL, try different subdomains and patterns
       if (response.status === 404 && imageUrl.includes('alicdn.com')) {
