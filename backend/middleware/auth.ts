@@ -37,23 +37,20 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     
     let role = 'customer';
     
-    // Try to get user role from Firestore, but don't fail if it fails
-    try {
-      const userDoc = await db.collection('users').doc(decodedToken.uid).get();
-      if (userDoc.exists) {
-        role = userDoc.data()?.role || 'customer';
-      } else if (decodedToken.email === 'mjonlineshopbd@gmail.com') {
-        // Auto-grant admin role to the primary admin email if document doesn't exist
-        role = 'admin';
-        console.log('Auto-granting admin role to primary admin email:', decodedToken.email);
-      }
-    } catch (firestoreError: any) {
-      console.warn('Firestore role fetch failed with primary DB, trying default DB:', firestoreError.message);
-      
-      // Check email before trying fallback DB
-      if (decodedToken.email === 'mjonlineshopbd@gmail.com') {
-        role = 'admin';
-      } else {
+    // Check primary admin email BEFORE calling Firestore to avoid unnecessary permission errors
+    if (decodedToken.email === 'mjonlineshopbd@gmail.com') {
+      role = 'admin';
+      console.log('Auto-granting admin role to primary admin email:', decodedToken.email);
+    } else {
+      // Try to get user role from Firestore for other users
+      try {
+        const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+        if (userDoc.exists) {
+          role = userDoc.data()?.role || 'customer';
+        }
+      } catch (firestoreError: any) {
+        console.warn('Firestore role fetch failed with primary DB:', firestoreError.message);
+        
         try {
           // Fallback to default database if primary fails
           const { getFirestore: getAdminFirestore } = await import('firebase-admin/firestore');

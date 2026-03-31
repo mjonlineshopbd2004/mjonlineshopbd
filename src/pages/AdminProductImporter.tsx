@@ -78,6 +78,11 @@ export default function AdminProductImporter() {
       } else {
         const text = await response.text();
         console.error('Non-JSON response from scraper:', text);
+        
+        if (text.includes('FUNCTION_INVOCATION_FAILED')) {
+          throw new Error('The server took too long to respond (Vercel timeout). This often happens with complex websites. Please try again or use a different URL.');
+        }
+        
         throw new Error(`Server returned an unexpected response: ${text.substring(0, 100)}...`);
       }
 

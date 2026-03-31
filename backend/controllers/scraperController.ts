@@ -2,16 +2,41 @@ import { Request, Response } from 'express';
 import * as cheerio from 'cheerio';
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-if (!process.env.GEMINI_API_KEY) {
-  console.error('CRITICAL: GEMINI_API_KEY is not set in the environment!');
-} else {
-  console.log('GEMINI_API_KEY is set (length:', process.env.GEMINI_API_KEY.length, ')');
-}
+let aiClient: GoogleGenAI | null = null;
+
+const getAiClient = () => {
+  if (!aiClient) {
+    // Try both GEMINI_API_KEY and API_KEY (some environments use one or the other)
+    const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+    
+    if (!apiKey) {
+      console.error('CRITICAL: No Gemini API key found! Please set GEMINI_API_KEY in your environment variables.');
+    } else if (apiKey.includes('TODO') || apiKey.length < 10) {
+      console.error('CRITICAL: Gemini API key appears to be a placeholder or invalid:', apiKey.substring(0, 10) + '...');
+    } else {
+      // Log key info safely for debugging
+      console.log(`Gemini API Key initialized (Length: ${apiKey.length}, Prefix: ${apiKey.substring(0, 6)}...)`);
+    }
+    
+    aiClient = new GoogleGenAI({ apiKey: apiKey || '' });
+  }
+  return aiClient;
+};
 
 export const scrapeProduct = async (req: Request, res: Response) => {
   const { url } = req.body;
   console.log('Scraping request received for URL:', url);
+
+  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  if (!apiKey || apiKey.includes('TODO') || apiKey.length < 10) {
+    console.error('CRITICAL: Gemini API key is missing or invalid!');
+    return res.status(500).json({ 
+      message: 'Gemini API Key is missing or invalid. Please set GEMINI_API_KEY in your Vercel/Environment settings.',
+      error: 'API_KEY_MISSING'
+    });
+  }
+
+  const ai = getAiClient();
 
   if (!url) {
     console.warn('Scraping failed: No URL provided');
@@ -39,7 +64,7 @@ export const scrapeProduct = async (req: Request, res: Response) => {
           'upgrade-insecure-requests': '1',
           'Referer': 'https://www.google.com/',
         },
-        signal: AbortSignal.timeout(3000), // Reduced from 8000 to fit Vercel 10s limit
+        signal: AbortSignal.timeout(2000), // Reduced from 3000 to allow more time for Gemini fallback
       });
 
       if (!response.ok) {
@@ -50,19 +75,27 @@ export const scrapeProduct = async (req: Request, res: Response) => {
     } catch (fetchError: any) {
       console.error('Direct fetch failed:', fetchError.message);
       
-      // If direct fetch fails (e.g. 403), try to use Gemini with Google Search to find the info
-      console.log('Attempting fallback: Using Gemini with Google Search to find product info...');
+      // If direct fetch fails (e.g. 403), try to use Gemini with URL Context to find the info
+      console.log('Attempting fallback: Using Gemini with URL Context to find product info...');
       try {
         const searchResponse = await ai.models.generateContent({
           model: "gemini-3-flash-preview",
-          contents: `Find product information for this URL: ${url}. 
-          I need the product name, price in BDT (numeric), a summarized description (max 300 words), and at least 3 high-quality product image URLs.
-          If you can't access the URL directly, use Google Search to find the product details from other sources or cached versions.`,
+          contents: `Find the EXACT ORIGINAL product details for this URL: ${url}. 
+          
+          REQUIRED FIELDS:
+          1. name: The full original product title.
+          2. originalPrice: The price in the original currency (e.g., ¥, $, or local).
+          3. price: Convert the original price to BDT (1 CNY = 16 BDT, 1 USD = 115 BDT).
+          4. description: A detailed summary of the product features.
+          5. images: Extract ALL high-quality product image URLs.
+          6. category: The product category.
+          7. sizes/colors: Available variations.`,
           config: {
-            systemInstruction: "You are a product data extractor. You MUST return ONLY a valid JSON object matching the requested schema. Be concise. Do not include any conversational text, markdown formatting, or explanations.",
-            tools: [{ googleSearch: {} }],
+            systemInstruction: "You are a professional product data specialist. Your goal is to find the most accurate and original information. Use Google Search and URL Context to bypass blocks. Return ONLY a valid JSON object. Do not guess; find real data.",
+            tools: [{ urlContext: {} }, { googleSearch: {} }],
+            toolConfig: { includeServerSideToolInvocations: true },
             responseMimeType: "application/json",
-            maxOutputTokens: 1024, // Reduced from 2048
+            maxOutputTokens: 1500,
             responseSchema: {
               type: Type.OBJECT,
               properties: {
@@ -106,42 +139,46 @@ export const scrapeProduct = async (req: Request, res: Response) => {
 
     const $ = cheerio.load(html);
 
-    // Remove scripts, styles, and other non-content elements to reduce token usage
-    $('script, style, noscript, iframe, header, footer, nav').remove();
+    // More aggressive cleaning to keep only essential content
+    $('script, style, noscript, iframe, header, footer, nav, svg, path, button, input, textarea, select, form').remove();
+    
+    // Remove empty elements
+    $('*').each((i, el) => {
+      if ($(el).children().length === 0 && !$(el).text().trim() && el.tagName !== 'img') {
+        $(el).remove();
+      }
+    });
+
     const cleanHtml = $('body').html() || html;
-    const textContent = cleanHtml.substring(0, 8000); // Reduced from 15000 to avoid token limits and speed up
+    // Increase limit to 12000 but with cleaner content
+    const textContent = cleanHtml.substring(0, 12000); 
 
     console.log('Using Gemini to parse product data...');
     
     try {
       const geminiResponse = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Extract product information from the following HTML content of a product page. 
+        contents: `Extract the ORIGINAL product information from this page:
         URL: ${url}
+        HTML Snippet: ${textContent}
         
-        HTML Content:
-        ${textContent}
-        
-        Return the data in JSON format with the following fields:
-        - name: string (The product title)
-        - price: number (numeric value only, convert to BDT if needed. 1 CNY = 16 BDT, 1 USD = 110 BDT)
-        - originalPrice: string (The price as seen on the website, e.g. "¥15.00" or "$10.00")
-        - category: string (A suitable category name)
-        - description: string (Summarized description, max 300 words)
-        - images: string[] (absolute URLs of product images, max 10)
-        - sizes: string[] (available sizes)
-        - colors: string[] (available colors)
-        - specifications: { key: string, value: string }[] (key-value pairs of product details, max 15)`,
+        I need:
+        1. The EXACT product name/title.
+        2. The ORIGINAL price (e.g., in CNY, USD, or local currency) AND the converted price in BDT (numeric).
+        3. A detailed but concise description (max 300 words).
+        4. ALL high-quality product image URLs (absolute paths).
+        5. Available sizes, colors, and technical specifications.
+        6. The product category.`,
         config: {
-          systemInstruction: "You are a product data extractor. You MUST return ONLY a valid JSON object matching the requested schema. Be concise. Do not include any conversational text, markdown formatting, or explanations.",
+          systemInstruction: "You are a professional product data extractor. Your goal is to extract the most accurate and original information from the provided HTML. If the price is in a foreign currency (like Chinese Yuan ¥ or USD $), convert it to Bangladeshi Taka (BDT) using current approximate rates (e.g., 1 CNY = 16 BDT, 1 USD = 115 BDT). Return ONLY a valid JSON object.",
           responseMimeType: "application/json",
-          maxOutputTokens: 1024, // Reduced from 2048
+          maxOutputTokens: 1500,
           responseSchema: {
             type: Type.OBJECT,
             properties: {
               name: { type: Type.STRING },
-              price: { type: Type.NUMBER },
-              originalPrice: { type: Type.STRING },
+              price: { type: Type.NUMBER, description: "Price converted to BDT (numeric)" },
+              originalPrice: { type: Type.STRING, description: "The price in its original currency as seen on the site" },
               category: { type: Type.STRING },
               description: { type: Type.STRING },
               images: {

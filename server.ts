@@ -2,6 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+
+// Load environment variables as early as possible
+dotenv.config();
+
 import https from 'https';
 import { createServer as createViteServer } from 'vite';
 import apiRoutes from './backend/routes';
@@ -12,8 +16,6 @@ import { authenticate } from './backend/middleware/auth';
 
 // Set GOOGLE_CLOUD_PROJECT early to ensure Firebase Admin SDK uses the correct project ID
 process.env.GOOGLE_CLOUD_PROJECT = firebaseConfig.projectId;
-
-dotenv.config();
 
 async function startServer() {
   const app = express();
