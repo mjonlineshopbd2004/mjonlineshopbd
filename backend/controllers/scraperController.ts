@@ -6,8 +6,9 @@ let aiClient: GoogleGenAI | null = null;
 
 const getAiClient = () => {
   if (!aiClient) {
-    // Try both GEMINI_API_KEY and API_KEY (some environments use one or the other)
-    const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+    // Try both GEMINI_API_KEY and API_KEY, and TRIM them to prevent whitespace errors
+    const rawKey = process.env.GEMINI_API_KEY || process.env.API_KEY || '';
+    const apiKey = rawKey.trim();
     
     if (!apiKey) {
       console.error('CRITICAL: No Gemini API key found! Please set GEMINI_API_KEY in your environment variables.');
@@ -15,10 +16,10 @@ const getAiClient = () => {
       console.error('CRITICAL: Gemini API key appears to be a placeholder or invalid:', apiKey.substring(0, 10) + '...');
     } else {
       // Log key info safely for debugging
-      console.log(`Gemini API Key initialized (Length: ${apiKey.length}, Prefix: ${apiKey.substring(0, 6)}...)`);
+      console.log(`Gemini AI Client initialized. Key Length: ${apiKey.length}, Prefix: ${apiKey.substring(0, 6)}..., Suffix: ...${apiKey.slice(-4)}`);
     }
     
-    aiClient = new GoogleGenAI({ apiKey: apiKey || '' });
+    aiClient = new GoogleGenAI({ apiKey: apiKey });
   }
   return aiClient;
 };
@@ -139,8 +140,14 @@ export const scrapeProduct = async (req: Request, res: Response) => {
 
     const $ = cheerio.load(html);
 
-    // More aggressive cleaning to keep only essential content
-    $('script, style, noscript, iframe, header, footer, nav, svg, path, button, input, textarea, select, form').remove();
+    // Extract JSON-LD data before cleaning, as it often contains the most accurate info
+    const jsonLdData: string[] = [];
+    $('script[type="application/ld+json"]').each((i, el) => {
+      jsonLdData.push($(el).html() || '');
+    });
+
+    // More aggressive cleaning but preserve essential text and structure
+    $('script:not([type="application/ld+json"]), style, noscript, iframe, header, footer, nav, svg, path, button, input, textarea, select, form').remove();
     
     // Remove empty elements
     $('*').each((i, el) => {
@@ -150,35 +157,36 @@ export const scrapeProduct = async (req: Request, res: Response) => {
     });
 
     const cleanHtml = $('body').html() || html;
-    // Increase limit to 12000 but with cleaner content
-    const textContent = cleanHtml.substring(0, 12000); 
+    // Combine cleaned HTML with JSON-LD data
+    const textContent = (jsonLdData.join('\n') + '\n' + cleanHtml).substring(0, 15000); 
 
-    console.log('Using Gemini to parse product data...');
+    console.log('Using Gemini to parse product data (Content length:', textContent.length, ')...');
     
     try {
       const geminiResponse = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: `Extract the ORIGINAL product information from this page:
         URL: ${url}
-        HTML Snippet: ${textContent}
+        HTML/Data Snippet: ${textContent}
         
         I need:
-        1. The EXACT product name/title.
-        2. The ORIGINAL price (e.g., in CNY, USD, or local currency) AND the converted price in BDT (numeric).
-        3. A detailed but concise description (max 300 words).
-        4. ALL high-quality product image URLs (absolute paths).
-        5. Available sizes, colors, and technical specifications.
-        6. The product category.`,
+        1. name: The full original product title.
+        2. originalPrice: The price in the original currency (e.g., ¥, $, ৳, or local).
+        3. price: Convert the original price to BDT (numeric). If it's already in BDT/৳, just provide the number.
+        4. description: A detailed summary of the product features (max 300 words).
+        5. images: Extract ALL high-quality product image URLs. Look for 'image', 'og:image', or large images in the HTML.
+        6. category: The product category.
+        7. sizes/colors: Available variations.`,
         config: {
-          systemInstruction: "You are a professional product data extractor. Your goal is to extract the most accurate and original information from the provided HTML. If the price is in a foreign currency (like Chinese Yuan ¥ or USD $), convert it to Bangladeshi Taka (BDT) using current approximate rates (e.g., 1 CNY = 16 BDT, 1 USD = 115 BDT). Return ONLY a valid JSON object.",
+          systemInstruction: "You are a professional product data extractor. Your goal is to extract the most accurate and original information. Look specifically for JSON-LD scripts or meta tags for price and images. If the price is in a foreign currency (like Chinese Yuan ¥ or USD $), convert it to Bangladeshi Taka (BDT) using current approximate rates (e.g., 1 CNY = 16 BDT, 1 USD = 115 BDT). If the price is 0 or missing, try to find it in the text. Return ONLY a valid JSON object.",
           responseMimeType: "application/json",
-          maxOutputTokens: 1500,
+          maxOutputTokens: 2000,
           responseSchema: {
             type: Type.OBJECT,
             properties: {
               name: { type: Type.STRING },
-              price: { type: Type.NUMBER, description: "Price converted to BDT (numeric)" },
-              originalPrice: { type: Type.STRING, description: "The price in its original currency as seen on the site" },
+              price: { type: Type.NUMBER },
+              originalPrice: { type: Type.STRING },
               category: { type: Type.STRING },
               description: { type: Type.STRING },
               images: {
@@ -192,17 +200,6 @@ export const scrapeProduct = async (req: Request, res: Response) => {
               colors: {
                 type: Type.ARRAY,
                 items: { type: Type.STRING }
-              },
-              specifications: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    key: { type: Type.STRING },
-                    value: { type: Type.STRING }
-                  },
-                  required: ["key", "value"]
-                }
               }
             },
             required: ["name", "price", "description", "images", "category"]
@@ -213,6 +210,13 @@ export const scrapeProduct = async (req: Request, res: Response) => {
       const text = geminiResponse.text.trim();
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       const data = JSON.parse(jsonMatch ? jsonMatch[0] : text);
+      
+      // If price is 0, it's likely a failure, trigger search fallback
+      if (data.price === 0 || !data.images || data.images.length === 0) {
+        console.warn('Gemini parsed 0 price or no images, triggering search fallback...');
+        throw new Error('Incomplete data extracted');
+      }
+
       console.log('Gemini successfully parsed data:', data.name);
 
       // Ensure image URLs are absolute
@@ -231,28 +235,52 @@ export const scrapeProduct = async (req: Request, res: Response) => {
     } catch (geminiError: any) {
       console.error('Gemini parsing failed, falling back to cheerio:', geminiError.message);
       
+      const isApiKeyError = geminiError.message.includes('API key not valid') || geminiError.message.includes('API_KEY_INVALID');
+      
       // Fallback to basic cheerio selectors
-      const name = $('.product-title').text().trim() || $('h1').first().text().trim();
-      const priceText = $('.product-price').first().text().trim() || $('.price').first().text().trim();
+      const name = $('.product-title').text().trim() || $('h1').first().text().trim() || $('title').text().trim();
+      
+      // Special Daraz/Lazada price extraction from scripts
+      let priceText = '';
+      $('script').each((i, el) => {
+        const content = $(el).html() || '';
+        if (content.includes('price') && content.includes('currency')) {
+          const match = content.match(/"price":\s*"?(\d+(\.\d+)?)"?/);
+          if (match) priceText = match[1];
+        }
+      });
+
+      if (!priceText) {
+        priceText = $('.product-price').first().text().trim() || $('.price').first().text().trim() || $('[data-price]').first().attr('data-price') || '';
+      }
+      
       const price = parseFloat(priceText.replace(/[^0-9.]/g, '')) || 0;
       const description = $('.product-description').html() || $('#description').html() || $('.details').html() || '';
       
       const images: string[] = [];
+      // Try to find images in meta tags first
+      const ogImage = $('meta[property="og:image"]').attr('content');
+      if (ogImage) images.push(ogImage);
+
       $('img').each((i, el) => {
-        const src = $(el).attr('src') || $(el).attr('data-src');
-        if (src && (src.includes('product') || src.includes('item') || $(el).closest('.gallery, .product-image').length > 0)) {
+        const src = $(el).attr('src') || $(el).attr('data-src') || $(el).attr('original-src');
+        if (src && (src.includes('product') || src.includes('item') || src.includes('detail') || $(el).closest('.gallery, .product-image, .main-image').length > 0)) {
           if (src.startsWith('//')) images.push('https:' + src);
           else if (src.startsWith('/')) images.push(new URL(url).origin + src);
           else images.push(src);
         }
       });
 
+      const finalImages = Array.from(new Set(images)).filter(img => img.startsWith('http')).slice(0, 10);
+
       return res.json({
         name,
         price,
-        description,
-        images: Array.from(new Set(images)).slice(0, 10),
-        sourceUrl: url
+        description: description.substring(0, 500),
+        images: finalImages.length > 0 ? finalImages : ['https://picsum.photos/seed/product/800/800'],
+        sourceUrl: url,
+        error: isApiKeyError ? 'GEMINI_API_KEY_INVALID' : null,
+        message: isApiKeyError ? 'Your Gemini API Key is invalid. Please check your Vercel environment variables.' : null
       });
     }
   } catch (error: any) {

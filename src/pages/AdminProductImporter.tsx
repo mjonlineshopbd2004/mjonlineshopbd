@@ -89,6 +89,12 @@ export default function AdminProductImporter() {
       if (!response.ok) {
         throw new Error(data.message || 'Failed to fetch product data');
       }
+
+      if (data.error === 'GEMINI_API_KEY_INVALID') {
+        toast.warning('AI is partially working. Please set a valid GEMINI_API_KEY in Vercel for full original details.', {
+          duration: 10000
+        });
+      }
       
       // Map backend fields to frontend fields
       const importedProduct: ImportedProduct = {
@@ -168,6 +174,15 @@ export default function AdminProductImporter() {
               Universal Product Importer
             </h1>
             <p className="text-gray-400 font-bold">Import products from any website (1688, Amazon, Daraz, etc.) using AI.</p>
+          </div>
+          <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-2xl border border-white/10">
+            <div className={cn(
+              "h-2 w-2 rounded-full animate-pulse",
+              import.meta.env.VITE_HAS_API_KEY === 'true' ? "bg-emerald-500" : "bg-amber-500"
+            )} />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+              AI Status: {import.meta.env.VITE_HAS_API_KEY === 'true' ? 'Ready' : 'Key Missing'}
+            </span>
           </div>
         </div>
 
