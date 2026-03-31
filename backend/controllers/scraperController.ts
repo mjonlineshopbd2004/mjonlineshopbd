@@ -39,7 +39,7 @@ export const scrapeProduct = async (req: Request, res: Response) => {
           'upgrade-insecure-requests': '1',
           'Referer': 'https://www.google.com/',
         },
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(3000), // Reduced from 8000 to fit Vercel 10s limit
       });
 
       if (!response.ok) {
@@ -62,7 +62,7 @@ export const scrapeProduct = async (req: Request, res: Response) => {
             systemInstruction: "You are a product data extractor. You MUST return ONLY a valid JSON object matching the requested schema. Be concise. Do not include any conversational text, markdown formatting, or explanations.",
             tools: [{ googleSearch: {} }],
             responseMimeType: "application/json",
-            maxOutputTokens: 2048,
+            maxOutputTokens: 1024, // Reduced from 2048
             responseSchema: {
               type: Type.OBJECT,
               properties: {
@@ -109,7 +109,7 @@ export const scrapeProduct = async (req: Request, res: Response) => {
     // Remove scripts, styles, and other non-content elements to reduce token usage
     $('script, style, noscript, iframe, header, footer, nav').remove();
     const cleanHtml = $('body').html() || html;
-    const textContent = cleanHtml.substring(0, 15000); // Reduced from 30000 to avoid token limits
+    const textContent = cleanHtml.substring(0, 8000); // Reduced from 15000 to avoid token limits and speed up
 
     console.log('Using Gemini to parse product data...');
     
@@ -135,7 +135,7 @@ export const scrapeProduct = async (req: Request, res: Response) => {
         config: {
           systemInstruction: "You are a product data extractor. You MUST return ONLY a valid JSON object matching the requested schema. Be concise. Do not include any conversational text, markdown formatting, or explanations.",
           responseMimeType: "application/json",
-          maxOutputTokens: 2048,
+          maxOutputTokens: 1024, // Reduced from 2048
           responseSchema: {
             type: Type.OBJECT,
             properties: {

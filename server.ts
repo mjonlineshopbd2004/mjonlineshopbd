@@ -68,7 +68,7 @@ async function startServer() {
 
         const response = await fetch(url, {
           headers,
-          signal: AbortSignal.timeout(8000),
+          signal: AbortSignal.timeout(5000), // Reduced from 8000 to fit Vercel 10s limit
           redirect: 'follow',
         });
 
