@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, getDocs, orderBy, where } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, where, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Order } from '../types';
 import { formatPrice, getProxyUrl } from '../lib/utils';
-import { Search, Filter, Eye, CreditCard, Calendar, Loader2, ArrowRight } from 'lucide-react';
+import { Search, Filter, Eye, CreditCard, Calendar, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { toast } from 'sonner';
 
 export default function AdminTransactions() {
   const [transactions, setTransactions] = useState<Order[]>([]);
@@ -13,19 +14,46 @@ export default function AdminTransactions() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTransaction, setSelectedTransaction] = useState<Order | null>(null);
 
+  const handleMarkAsPaid = async (orderId: string) => {
+    try {
+      await updateDoc(doc(db, 'orders', orderId), {
+        paymentStatus: 'paid'
+      });
+      setTransactions(transactions.map(t => t.id === orderId ? { ...t, paymentStatus: 'paid' } : t));
+      if (selectedTransaction?.id === orderId) {
+        setSelectedTransaction({ ...selectedTransaction, paymentStatus: 'paid' });
+      }
+      toast.success('Payment marked as paid');
+    } catch (error) {
+      console.error("Error updating payment status:", error);
+      toast.error('Failed to update payment status');
+    }
+  };
+
   const fetchTransactions = async () => {
     setLoading(true);
     try {
-      // Fetch all orders that are marked as 'paid'
+      // Fetch all orders that are NOT Cash on Delivery
+      // This allows admins to see pending manual payments (bKash, etc.) for verification
       const q = query(
         collection(db, 'orders'), 
-        where('paymentStatus', '==', 'paid'),
+        where('paymentMethod', '!=', 'cod'),
+        orderBy('paymentMethod'),
         orderBy('createdAt', 'desc')
       );
       const querySnapshot = await getDocs(q);
       setTransactions(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order)));
     } catch (error) {
       console.error("Error fetching transactions:", error);
+      // Fallback: if the complex query fails (e.g. missing index), fetch all and filter
+      try {
+        const qAll = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+        const snapAll = await getDocs(qAll);
+        const allOrders = snapAll.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+        setTransactions(allOrders.filter(o => o.paymentMethod !== 'cod'));
+      } catch (err) {
+        console.error("Fallback fetch failed:", err);
+      }
     } finally {
       setLoading(false);
     }
@@ -110,6 +138,12 @@ export default function AdminTransactions() {
                   </td>
                   <td className="px-8 py-6">
                     <p className="font-black text-white text-lg">{formatPrice(transaction.total)}</p>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest",
+                      transaction.paymentStatus === 'paid' ? "bg-emerald-500/10 text-emerald-500" : "bg-yellow-500/10 text-yellow-500"
+                    )}>
+                      {transaction.paymentStatus}
+                    </span>
                   </td>
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-2">
@@ -199,13 +233,22 @@ export default function AdminTransactions() {
                 )}
               </div>
 
-              <div className="p-8 border-t border-white/5 bg-white/5 flex justify-end">
+              <div className="p-8 border-t border-white/5 bg-white/5 flex justify-end gap-4">
                 <button
                   onClick={() => setSelectedTransaction(null)}
-                  className="px-8 py-4 rounded-xl font-black text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"
+                  className="px-8 py-4 rounded-xl font-black text-gray-500 hover:text-white hover:bg-white/5 transition-all"
                 >
                   Close
                 </button>
+                {selectedTransaction.paymentStatus === 'pending' && (
+                  <button
+                    onClick={() => handleMarkAsPaid(selectedTransaction.id)}
+                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-xl font-black transition-all shadow-lg shadow-emerald-600/20"
+                  >
+                    <CheckCircle2 className="h-5 w-5" />
+                    Mark as Paid
+                  </button>
+                )}
               </div>
             </motion.div>
           </div>

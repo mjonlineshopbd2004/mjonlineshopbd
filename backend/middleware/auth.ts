@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { auth, db } from '../config/firebase';
+import { getAuthInstance, getDb } from '../config/firebase';
 import fs from 'fs';
 import path from 'path';
 
@@ -24,10 +24,8 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
 
   try {
     // Verify the ID token first
-    if (!auth) {
-      console.error('Firebase Auth is not initialized. Check server logs.');
-      return res.status(500).json({ message: 'Authentication service unavailable' });
-    }
+    const auth = getAuthInstance();
+    const db = getDb();
 
     console.log('Verifying token for project:', firebaseConfig.projectId);
     console.log('Auth service project ID:', (auth as any).app?.options?.projectId);
@@ -44,6 +42,7 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     }
     
     console.log('Token verified successfully for user:', decodedToken.uid);
+    console.log('Token email:', decodedToken.email);
     
     let role = 'customer';
     
@@ -52,11 +51,15 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
       role = 'admin';
       console.log('Auto-granting admin role to primary admin email:', decodedToken.email);
     } else {
+      console.log('Fetching role from Firestore for user:', decodedToken.uid);
       // Try to get user role from Firestore for other users
       try {
         const userDoc = await db.collection('users').doc(decodedToken.uid).get();
         if (userDoc.exists) {
           role = userDoc.data()?.role || 'customer';
+          console.log('Role found in Firestore:', role);
+        } else {
+          console.log('No user document found in Firestore, defaulting to customer');
         }
       } catch (firestoreError: any) {
         console.warn('Firestore role fetch failed with primary DB:', firestoreError.message);

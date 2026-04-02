@@ -1,4 +1,4 @@
-import { db } from '../config/firebase';
+import { getDb } from '../config/firebase';
 
 export interface GoogleSheetConfig {
   spreadsheetId: string;
@@ -9,11 +9,8 @@ export interface GoogleSheetConfig {
 
 export const getGoogleSheetConfig = async (): Promise<GoogleSheetConfig | null> => {
   try {
-    if (!db) {
-      console.error('Firestore database is not initialized in googleSheetService');
-      return null;
-    }
-    const settingsDoc = await db.collection('settings').doc('googleSheet').get();
+    const dbInstance = getDb();
+    const settingsDoc = await dbInstance.collection('settings').doc('googleSheet').get();
     if (!settingsDoc.exists) {
       console.log('Google Sheet settings document not found in Firestore.');
       return null;
@@ -21,6 +18,10 @@ export const getGoogleSheetConfig = async (): Promise<GoogleSheetConfig | null> 
     return settingsDoc.data() as GoogleSheetConfig;
   } catch (error: any) {
     console.error('Error fetching Google Sheet config:', error.message);
+    // If it's a permission error, throw it so the caller knows something is wrong with the configuration
+    if (error.message.includes('PERMISSION_DENIED') || error.code === 7) {
+      throw new Error(`Firestore Permission Denied: The server does not have permission to read your settings. This often happens in remixed apps. Please re-run the Firebase setup from the settings menu. Original error: ${error.message}`);
+    }
     return null;
   }
 };
@@ -72,6 +73,7 @@ export const syncOrderToSheet = async (order: any) => {
   }
 
   try {
+    console.log(`Syncing order ${order.id} to Google Sheet...`);
     const { JWT } = await import('google-auth-library');
     const { GoogleSpreadsheet } = await import('google-spreadsheet');
 
@@ -83,6 +85,12 @@ export const syncOrderToSheet = async (order: any) => {
     const sanitizedId = extractId(config.spreadsheetId);
     const formattedKey = getFormattedKey(config.privateKey);
     
+    if (!formattedKey) {
+      console.error('Sync failed: Invalid private key format.');
+      return;
+    }
+
+    console.log('Authenticating with Google Sheets API...');
     const serviceAccountAuth = new JWT({
       email: config.clientEmail.trim(),
       key: formattedKey,
@@ -91,9 +99,11 @@ export const syncOrderToSheet = async (order: any) => {
 
     const doc = new GoogleSpreadsheet(sanitizedId, serviceAccountAuth);
     await doc.loadInfo();
+    console.log(`Spreadsheet "${doc.title}" loaded.`);
 
     let sheet = doc.sheetsByTitle['Orders'];
     if (!sheet) {
+      console.log('Creating "Orders" sheet...');
       sheet = await doc.addSheet({ 
         title: 'Orders', 
         headerValues: [
@@ -124,9 +134,10 @@ export const syncOrderToSheet = async (order: any) => {
       'Items': itemsSummary
     });
 
-    console.log(`Order ${order.id} synced to Google Sheet.`);
+    console.log(`Order ${order.id} synced successfully.`);
   } catch (error: any) {
     console.error('Error syncing order to Google Sheet:', error.message);
+    if (error.stack) console.error(error.stack);
   }
 };
 
@@ -137,6 +148,7 @@ export const syncProductToSheet = async (product: any) => {
   }
 
   try {
+    console.log(`Syncing product ${product.id} to Google Sheet...`);
     const { JWT } = await import('google-auth-library');
     const { GoogleSpreadsheet } = await import('google-spreadsheet');
 
@@ -148,6 +160,11 @@ export const syncProductToSheet = async (product: any) => {
     const sanitizedId = extractId(config.spreadsheetId);
     const formattedKey = getFormattedKey(config.privateKey);
     
+    if (!formattedKey) {
+      console.error('Sync failed: Invalid private key format.');
+      return;
+    }
+
     const serviceAccountAuth = new JWT({
       email: config.clientEmail.trim(),
       key: formattedKey,
@@ -159,6 +176,7 @@ export const syncProductToSheet = async (product: any) => {
 
     let sheet = doc.sheetsByTitle['Products'];
     if (!sheet) {
+      console.log('Creating "Products" sheet...');
       sheet = await doc.addSheet({ 
         title: 'Products', 
         headerValues: [
@@ -199,9 +217,10 @@ export const syncProductToSheet = async (product: any) => {
       await sheet.addRow(productData);
     }
 
-    console.log(`Product ${product.id} synced to Google Sheet.`);
+    console.log(`Product ${product.id} synced successfully.`);
   } catch (error: any) {
     console.error('Error syncing product to Google Sheet:', error.message);
+    if (error.stack) console.error(error.stack);
   }
 };
 
@@ -239,23 +258,60 @@ export const getProductsFromSheet = async () => {
     console.log('Loading spreadsheet info for product sync...');
     await doc.loadInfo();
 
-    const sheet = doc.sheetsByTitle['Products'];
+    let sheet = doc.sheetsByTitle['Products'];
+    
+    // If sheet doesn't exist, create it with headers to help the user
     if (!sheet) {
-      console.warn('Sheet "Products" not found in spreadsheet.');
-      return null;
+      console.log('Sheet "Products" not found. Creating it with default headers...');
+      sheet = await doc.addSheet({ 
+        title: 'Products', 
+        headerValues: [
+          'Product ID', 
+          'Name', 
+          'Price', 
+          'Discount Price', 
+          'Category', 
+          'Stock', 
+          'Rating', 
+          'Reviews Count', 
+          'Images',
+          'Last Updated'
+        ] 
+      });
+      
+      // Add a sample row
+      await sheet.addRow({
+        'Product ID': 'SAMPLE-001',
+        'Name': 'Sample Product Name',
+        'Price': 1000,
+        'Discount Price': 800,
+        'Category': 'Men',
+        'Stock': 10,
+        'Rating': 5,
+        'Reviews Count': 1,
+        'Images': 'https://picsum.photos/800/1000',
+        'Last Updated': new Date().toLocaleString()
+      });
+      
+      throw new Error('The "Products" sheet was missing. I have created it for you in your Google Sheet. Please fill it with your product data and try syncing again.');
     }
 
     console.log('Fetching rows from "Products" sheet...');
     const rows = await sheet.getRows();
+    
+    if (rows.length === 0) {
+      throw new Error('The "Products" sheet is empty. Please add some products to the sheet first.');
+    }
+
     console.log(`Fetched ${rows.length} rows from sheet.`);
 
     return rows.map(row => ({
-      id: row.get('Product ID'),
-      name: row.get('Name'),
-      price: Number(row.get('Price')),
+      id: row.get('Product ID') || `P-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      name: row.get('Name') || 'Unnamed Product',
+      price: Number(row.get('Price')) || 0,
       discountPrice: row.get('Discount Price') ? Number(row.get('Discount Price')) : undefined,
-      category: row.get('Category'),
-      stock: Number(row.get('Stock')),
+      category: row.get('Category') || 'Uncategorized',
+      stock: Number(row.get('Stock')) || 0,
       rating: Number(row.get('Rating') || 0),
       reviewsCount: Number(row.get('Reviews Count') || 0),
       images: row.get('Images') ? row.get('Images').split(',').map((s: string) => s.trim()) : [],
@@ -263,6 +319,6 @@ export const getProductsFromSheet = async () => {
     }));
   } catch (error: any) {
     console.error('Error fetching products from Google Sheet:', error.message);
-    return null;
+    throw error; // Rethrow to catch in controller
   }
 };

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { db } from '../config/firebase';
+import { getDb } from '../config/firebase';
 import { Order, OrderStatus, PaymentMethod } from '../models/types';
 import { syncOrderToSheet } from '../services/googleSheetService';
 
@@ -11,6 +11,7 @@ export const createOrder = async (req: any, res: Response) => {
   }
 
   try {
+    const db = getDb();
     const newOrder: Order = {
       id: db.collection('orders').doc().id,
       userId: req.user.uid,
@@ -53,6 +54,7 @@ export const createOrder = async (req: any, res: Response) => {
 
 export const getUserOrders = async (req: any, res: Response) => {
   try {
+    const db = getDb();
     const snapshot = await db.collection('orders').where('userId', '==', req.user.uid).orderBy('createdAt', 'desc').get();
     const orders = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Order));
     res.json(orders);
@@ -63,6 +65,7 @@ export const getUserOrders = async (req: any, res: Response) => {
 
 export const getAllOrders = async (req: Request, res: Response) => {
   try {
+    const db = getDb();
     const snapshot = await db.collection('orders').orderBy('createdAt', 'desc').get();
     const orders = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Order));
     res.json(orders);
@@ -74,6 +77,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
 export const updateOrderStatus = async (req: Request, res: Response) => {
   const { status, paymentStatus, transactionId } = req.body;
   try {
+    const db = getDb();
     const orderRef = db.collection('orders').doc(req.params.id);
     const orderDoc = await orderRef.get();
     
@@ -101,6 +105,7 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 
 export const getOrderById = async (req: any, res: Response) => {
   try {
+    const db = getDb();
     const orderDoc = await db.collection('orders').doc(req.params.id).get();
     if (!orderDoc.exists) {
       return res.status(404).json({ message: 'Order not found' });

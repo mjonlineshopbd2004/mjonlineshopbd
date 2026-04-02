@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { googleDriveService } from '../services/googleDriveService';
-import { db } from '../config/firebase';
+import { getDb } from '../config/firebase';
 
 let lastConfigFetch = 0;
 const CONFIG_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -19,7 +19,8 @@ const ensureDriveConfigured = async () => {
 
     // Attempt to fetch settings from Firestore
     // We do this to allow UI-based configuration to override environment variables
-    const settingsDoc = await db.collection('settings').doc('googleSheet').get().catch(async (err: any) => {
+    const dbInstance = getDb();
+    const settingsDoc = await dbInstance.collection('settings').doc('googleSheet').get().catch(async (err: any) => {
       // Only log as warning if we already have a working config from env vars
       if (isAlreadyConfigured) {
         console.warn('Could not refresh Google Drive settings from primary Firestore (Permission Denied). Using existing configuration.');

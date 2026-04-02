@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Save, FileSpreadsheet, AlertCircle, CheckCircle2, Loader2, RefreshCw, Copy, ExternalLink } from 'lucide-react';
+import { Save, FileSpreadsheet, AlertCircle, CheckCircle2, Loader2, RefreshCw, Copy, ExternalLink, HelpCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import Modal from '../components/Modal';
 
 interface GoogleSheetSettings {
   spreadsheetId: string;
@@ -27,6 +28,8 @@ const AdminGoogleSheetSettings: React.FC = () => {
   const [testing, setTesting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showSyncConfirm, setShowSyncConfirm] = useState(false);
+  const [helpModal, setHelpModal] = useState<{ title: string; content: string } | null>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -95,14 +98,15 @@ const AdminGoogleSheetSettings: React.FC = () => {
       return;
     }
 
-    if (!window.confirm('This will update your products based on the data in the "Products" sheet. Continue?')) {
-      return;
-    }
+    setShowSyncConfirm(true);
+  };
 
+  const executeSyncProducts = async () => {
+    setShowSyncConfirm(false);
     setSyncing(true);
     try {
       const idToken = await auth.currentUser?.getIdToken();
-      const response = await fetch('/api/admin/settings/google-sheet/sync-products', {
+      const response = await fetch('/api/sync-products', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${idToken}`
@@ -230,8 +234,10 @@ const AdminGoogleSheetSettings: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    const helpText = `1. Open your Google Sheet.\n2. Look at the URL in your browser.\n3. Copy the long part between "/d/" and "/edit".\nExample: .../d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit\nID is: 1aBcDeFgHiJkLmNoPqRsTuVwXyZ`;
-                    alert(helpText);
+                    setHelpModal({
+                      title: 'Finding Spreadsheet ID',
+                      content: '1. Open your Google Sheet.\n2. Look at the URL in your browser.\n3. Copy the long part between "/d/" and "/edit".\nExample: .../d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit\nID is: 1aBcDeFgHiJkLmNoPqRsTuVwXyZ'
+                    });
                   }}
                   className="text-xs text-orange-600 hover:underline flex items-center gap-1"
                 >
@@ -269,8 +275,10 @@ const AdminGoogleSheetSettings: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    const helpText = `1. Open your Google Drive folder.\n2. Look at the URL in your browser.\n3. Copy the long part after "/folders/".\nExample: .../folders/1aBcDeFgHiJkLmNoPqRsTuVwXyZ\nID is: 1aBcDeFgHiJkLmNoPqRsTuVwXyZ`;
-                    alert(helpText);
+                    setHelpModal({
+                      title: 'Finding Folder ID',
+                      content: '1. Open your Google Drive folder.\n2. Look at the URL in your browser.\n3. Copy the long part after "/folders/".\nExample: .../folders/1aBcDeFgHiJkLmNoPqRsTuVwXyZ\nID is: 1aBcDeFgHiJkLmNoPqRsTuVwXyZ'
+                    });
                   }}
                   className="text-xs text-orange-600 hover:underline flex items-center gap-1"
                 >
@@ -545,6 +553,63 @@ const AdminGoogleSheetSettings: React.FC = () => {
           </div>
         </form>
       </div>
+
+      {/* Confirmation Modals */}
+      <Modal
+        isOpen={showSyncConfirm}
+        onClose={() => setShowSyncConfirm(false)}
+        title="Sync Products"
+        footer={
+          <>
+            <button
+              onClick={() => setShowSyncConfirm(false)}
+              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={executeSyncProducts}
+              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+            >
+              Continue Sync
+            </button>
+          </>
+        }
+      >
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-orange-100 rounded-full">
+            <RefreshCw className="w-6 h-6 text-orange-600" />
+          </div>
+          <div>
+            <p className="text-gray-600">
+              This will update your products based on the data in the <strong>"Products"</strong> sheet.
+            </p>
+            <p className="text-sm text-gray-500 mt-2">
+              Make sure your sheet headers match the required format.
+            </p>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!helpModal}
+        onClose={() => setHelpModal(null)}
+        title={helpModal?.title || 'Help'}
+        footer={
+          <button
+            onClick={() => setHelpModal(null)}
+            className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+          >
+            Got it
+          </button>
+        }
+      >
+        <div className="space-y-4">
+          {helpModal?.content.split('\n').map((line, i) => (
+            <p key={i} className="text-gray-600">{line}</p>
+          ))}
+        </div>
+      </Modal>
     </div>
   );
 };

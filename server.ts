@@ -47,7 +47,8 @@ async function startServer() {
   // API Routes
   console.log('Registering API routes...');
   app.use('/api', (req, res, next) => {
-    console.log(`API Request: ${req.method} ${req.url}`);
+    console.log(`[${new Date().toISOString()}] API Request: ${req.method} ${req.url}`);
+    console.log('Headers:', JSON.stringify(req.headers));
     next();
   }, apiRoutes);
 

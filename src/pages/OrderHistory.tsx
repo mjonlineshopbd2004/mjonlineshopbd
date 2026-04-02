@@ -5,11 +5,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { Order } from '../types';
 import { formatPrice, getProxyUrl } from '../lib/utils';
 import { Link } from 'react-router-dom';
-import { Package, ChevronRight, ShoppingBag, Clock, CheckCircle2, Truck, XCircle, RefreshCcw, AlertCircle } from 'lucide-react';
+import { Package, ChevronRight, ShoppingBag, Clock, CheckCircle2, Truck, XCircle, RefreshCcw, AlertCircle, AlertTriangle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import { doc, updateDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
+import Modal from '../components/Modal';
 
 export default function OrderHistory() {
   const { user } = useAuth();
@@ -18,6 +19,7 @@ export default function OrderHistory() {
 
   const [showRefundModal, setShowRefundModal] = useState<string | null>(null);
   const [refundReason, setRefundReason] = useState('');
+  const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
 
   const handleRefundRequest = async (orderId: string) => {
     if (!refundReason) {
@@ -70,6 +72,19 @@ export default function OrderHistory() {
     };
     fetchOrders();
   }, [user]);
+
+  const executeCancelOrder = async () => {
+    if (!orderToCancel) return;
+    try {
+      await updateDoc(doc(db, 'orders', orderToCancel), { status: 'cancelled' });
+      setOrders(orders.map(o => o.id === orderToCancel ? { ...o, status: 'cancelled' } : o));
+      toast.success('Order cancelled successfully');
+    } catch (error) {
+      toast.error('Failed to cancel order');
+    } finally {
+      setOrderToCancel(null);
+    }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -193,17 +208,7 @@ export default function OrderHistory() {
                       {/* Cancel Button for COD Pending Orders */}
                       {order.paymentMethod === 'cod' && order.status === 'pending' && (
                         <button
-                          onClick={async () => {
-                            if (window.confirm('Are you sure you want to cancel this order?')) {
-                              try {
-                                await updateDoc(doc(db, 'orders', order.id), { status: 'cancelled' });
-                                setOrders(orders.map(o => o.id === order.id ? { ...o, status: 'cancelled' } : o));
-                                toast.success('Order cancelled successfully');
-                              } catch (error) {
-                                toast.error('Failed to cancel order');
-                              }
-                            }
-                          }}
+                          onClick={() => setOrderToCancel(order.id)}
                           className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-gray-50 text-gray-600 border-2 border-gray-100 px-8 py-4 rounded-2xl font-bold hover:bg-gray-100 transition-all"
                         >
                           <XCircle className="h-5 w-5" />
@@ -289,6 +294,43 @@ export default function OrderHistory() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Cancel Confirmation Modal */}
+      <Modal
+        isOpen={!!orderToCancel}
+        onClose={() => setOrderToCancel(null)}
+        title="Cancel Order"
+        footer={
+          <>
+            <button
+              onClick={() => setOrderToCancel(null)}
+              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              No, Keep Order
+            </button>
+            <button
+              onClick={executeCancelOrder}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Yes, Cancel Order
+            </button>
+          </>
+        }
+      >
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-red-100 rounded-full">
+            <AlertTriangle className="w-6 h-6 text-red-600" />
+          </div>
+          <div>
+            <p className="text-gray-600 font-bold">
+              Are you sure you want to cancel this order?
+            </p>
+            <p className="text-sm text-gray-500 mt-2">
+              This action cannot be undone.
+            </p>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

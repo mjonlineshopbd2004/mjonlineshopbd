@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { toast } from 'sonner';
-import { Save, Globe, Phone, Mail, MapPin, Facebook, Instagram, Youtube, Twitter, Truck, Trash2, AlertTriangle, Upload, Image as ImageIcon, Loader2, RotateCcw } from 'lucide-react';
+import { Save, Globe, Phone, Mail, MapPin, Facebook, Instagram, Youtube, Twitter, Truck, Trash2, AlertTriangle, Upload, Image as ImageIcon, Loader2, RotateCcw, X } from 'lucide-react';
 import { uploadFile } from '../lib/upload';
 import { useAuth } from '../contexts/AuthContext';
 import { getProxyUrl } from '../lib/utils';
+import Modal from '../components/Modal';
 
 interface Banner {
   topText?: string;
@@ -98,10 +99,15 @@ export default function AdminSettings() {
   const [saving, setSaving] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const handleClearData = async () => {
-    if (!window.confirm('Are you sure you want to clear all store data? This will permanently delete all products, orders, and reviews. This action cannot be undone.')) return;
-    
+    setShowClearConfirm(true);
+  };
+
+  const executeClearData = async () => {
+    setShowClearConfirm(false);
     setClearing(true);
     try {
       const productsSnap = await getDocs(collection(db, 'products'));
@@ -126,8 +132,11 @@ export default function AdminSettings() {
   };
 
   const handleResetSettings = async () => {
-    if (!window.confirm('Are you sure you want to reset all settings to defaults? This will overwrite your current configuration.')) return;
-    
+    setShowResetConfirm(true);
+  };
+
+  const executeResetSettings = async () => {
+    setShowResetConfirm(false);
     setClearing(true);
     try {
       const defaultSettings = {
@@ -910,6 +919,79 @@ export default function AdminSettings() {
           </button>
         </div>
       </div>
+
+      {/* Confirmation Modals */}
+      <Modal
+        isOpen={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        title="Clear Store Data"
+        footer={
+          <>
+            <button
+              onClick={() => setShowClearConfirm(false)}
+              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={executeClearData}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Clear Everything
+            </button>
+          </>
+        }
+      >
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-red-100 rounded-full">
+            <AlertTriangle className="w-6 h-6 text-red-600" />
+          </div>
+          <div>
+            <p className="text-gray-600 font-bold">
+              Are you sure you want to clear all store data?
+            </p>
+            <p className="text-sm text-gray-500 mt-2">
+              This will permanently delete all products, orders, and reviews. This action cannot be undone.
+            </p>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showResetConfirm}
+        onClose={() => setShowResetConfirm(false)}
+        title="Reset Settings"
+        footer={
+          <>
+            <button
+              onClick={() => setShowResetConfirm(false)}
+              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={executeResetSettings}
+              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+            >
+              Reset to Defaults
+            </button>
+          </>
+        }
+      >
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-orange-100 rounded-full">
+            <RotateCcw className="w-6 h-6 text-orange-600" />
+          </div>
+          <div>
+            <p className="text-gray-600 font-bold">
+              Reset all settings to defaults?
+            </p>
+            <p className="text-sm text-gray-500 mt-2">
+              This will overwrite your current configuration with the default values.
+            </p>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

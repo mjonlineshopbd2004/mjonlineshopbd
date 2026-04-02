@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { db } from '../config/firebase';
+import { getDb } from '../config/firebase';
 import { UserProfile } from '../models/types';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_here';
@@ -14,6 +14,7 @@ export const registerUser = async (req: Request, res: Response) => {
   }
 
   try {
+    const db = getDb();
     const userSnapshot = await db.collection('users').where('email', '==', email).get();
     if (!userSnapshot.empty) {
       return res.status(400).json({ message: 'User already exists' });
@@ -51,6 +52,7 @@ export const loginUser = async (req: Request, res: Response) => {
   }
 
   try {
+    const db = getDb();
     const userSnapshot = await db.collection('users').where('email', '==', email).get();
     if (userSnapshot.empty) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -80,6 +82,7 @@ export const loginUser = async (req: Request, res: Response) => {
 
 export const getProfile = async (req: any, res: Response) => {
   try {
+    const db = getDb();
     const userDoc = await db.collection('users').doc(req.user.uid).get();
     if (!userDoc.exists) {
       return res.status(404).json({ message: 'User not found' });

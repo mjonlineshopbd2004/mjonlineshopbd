@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { db } from '../config/firebase';
+import { getDb } from '../config/firebase';
 import { Product } from '../models/types';
 import { syncProductToSheet } from '../services/googleSheetService';
 
@@ -11,6 +11,7 @@ export const createProduct = async (req: Request, res: Response) => {
   }
 
   try {
+    const db = getDb();
     const newProduct: Product = {
       id: db.collection('products').doc().id,
       name,
@@ -40,6 +41,7 @@ export const getAllProducts = async (req: Request, res: Response) => {
   const { category, minPrice, maxPrice, search, sort } = req.query;
 
   try {
+    const db = getDb();
     let query: any = db.collection('products');
 
     if (category) {
@@ -82,6 +84,7 @@ export const getAllProducts = async (req: Request, res: Response) => {
 
 export const getSingleProduct = async (req: Request, res: Response) => {
   try {
+    const db = getDb();
     const productDoc = await db.collection('products').doc(req.params.id).get();
     if (!productDoc.exists) {
       return res.status(404).json({ message: 'Product not found' });
@@ -94,6 +97,7 @@ export const getSingleProduct = async (req: Request, res: Response) => {
 
 export const updateProduct = async (req: Request, res: Response) => {
   try {
+    const db = getDb();
     const productRef = db.collection('products').doc(req.params.id);
     const productDoc = await productRef.get();
     
@@ -116,6 +120,7 @@ export const updateProduct = async (req: Request, res: Response) => {
 
 export const deleteProduct = async (req: Request, res: Response) => {
   try {
+    const db = getDb();
     await db.collection('products').doc(req.params.id).delete();
     res.json({ message: 'Product deleted successfully' });
   } catch (error) {

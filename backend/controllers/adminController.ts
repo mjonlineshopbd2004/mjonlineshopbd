@@ -1,10 +1,8 @@
 import { Request, Response } from 'express';
-import { GoogleSpreadsheet } from 'google-spreadsheet';
-import { JWT } from 'google-auth-library';
 import { google } from 'googleapis';
 import fs from 'fs';
 import path from 'path';
-import { db } from '../config/firebase';
+import { getDb } from '../config/firebase';
 import { UserProfile, Order, Product } from '../models/types';
 import { getProductsFromSheet } from '../services/googleSheetService';
 import bcrypt from 'bcryptjs';
@@ -29,7 +27,7 @@ export const seedDatabase = async (req: Request, res: Response) => {
       role: 'admin',
       createdAt: new Date().toISOString(),
     };
-    await db.collection('users').doc(adminUser.uid).set(adminUser);
+    await getDb().collection('users').doc(adminUser.uid).set(adminUser);
 
     // 2. Seed Products
     const products = [
@@ -72,8 +70,8 @@ export const seedDatabase = async (req: Request, res: Response) => {
     ];
 
     for (const product of products) {
-      const id = db.collection('products').doc().id;
-      await db.collection('products').doc(id).set({ ...product, id });
+      const id = getDb().collection('products').doc().id;
+      await getDb().collection('products').doc(id).set({ ...product, id });
     }
 
     // 3. Seed Coupons
@@ -97,8 +95,8 @@ export const seedDatabase = async (req: Request, res: Response) => {
     ];
 
     for (const coupon of coupons) {
-      const id = db.collection('coupons').doc().id;
-      await db.collection('coupons').doc(id).set({ ...coupon, id });
+      const id = getDb().collection('coupons').doc().id;
+      await getDb().collection('coupons').doc(id).set({ ...coupon, id });
     }
 
     res.json({ message: 'Database seeded successfully' });
@@ -110,10 +108,10 @@ export const seedDatabase = async (req: Request, res: Response) => {
 
 export const getDashboardStats = async (req: Request, res: Response) => {
   try {
-    const usersCount = (await db.collection('users').get()).size;
-    const productsCount = (await db.collection('products').get()).size;
+    const usersCount = (await getDb().collection('users').get()).size;
+    const productsCount = (await getDb().collection('products').get()).size;
     
-    const ordersSnapshot = await db.collection('orders').get();
+    const ordersSnapshot = await getDb().collection('orders').get();
     const orders = ordersSnapshot.docs.map(doc => doc.data() as Order);
     
     const totalOrders = orders.length;
@@ -137,7 +135,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
-    const snapshot = await db.collection('users').get();
+    const snapshot = await getDb().collection('users').get();
     const users = snapshot.docs.map(doc => {
       const { password: _, ...userWithoutPassword } = doc.data() as UserProfile;
       return userWithoutPassword;
@@ -151,7 +149,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
 export const updateUserRole = async (req: Request, res: Response) => {
   const { role } = req.body;
   try {
-    const userRef = db.collection('users').doc(req.params.id);
+    const userRef = getDb().collection('users').doc(req.params.id);
     const userDoc = await userRef.get();
     
     if (!userDoc.exists) {
@@ -167,7 +165,7 @@ export const updateUserRole = async (req: Request, res: Response) => {
 
 export const deleteUser = async (req: Request, res: Response) => {
   try {
-    await db.collection('users').doc(req.params.id).delete();
+    await getDb().collection('users').doc(req.params.id).delete();
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error deleting user' });
@@ -176,7 +174,7 @@ export const deleteUser = async (req: Request, res: Response) => {
 
 export const getGoogleSheetSettings = async (req: Request, res: Response) => {
   try {
-    const settingsDoc = await db.collection('settings').doc('googleSheet').get();
+    const settingsDoc = await getDb().collection('settings').doc('googleSheet').get();
     if (!settingsDoc.exists) {
       return res.json({
         spreadsheetId: '',
@@ -196,10 +194,7 @@ export const updateGoogleSheetSettings = async (req: Request, res: Response) => 
   const { spreadsheetId, clientEmail, privateKey, driveFolderId, enabled } = req.body;
   console.log('Updating Google Sheet settings:', { spreadsheetId, clientEmail, driveFolderId, enabled, hasPrivateKey: !!privateKey });
   try {
-    if (!db) {
-      throw new Error('Firestore database is not initialized');
-    }
-    await db.collection('settings').doc('googleSheet').set({
+    await getDb().collection('settings').doc('googleSheet').set({
       spreadsheetId,
       clientEmail,
       privateKey,
@@ -406,7 +401,7 @@ export const uploadToDrive = async (req: any, res: Response) => {
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    const settingsDoc = await db.collection('settings').doc('googleSheet').get();
+    const settingsDoc = await getDb().collection('settings').doc('googleSheet').get();
     if (!settingsDoc.exists) {
       return res.status(400).json({ message: 'Google Drive settings not found' });
     }
@@ -432,6 +427,7 @@ export const uploadToDrive = async (req: any, res: Response) => {
 
     const formattedKey = getFormattedKey(privateKey);
 
+    const { JWT } = await import('google-auth-library');
     const auth = new JWT({
       email: clientEmail,
       key: formattedKey,
@@ -490,9 +486,15 @@ export const syncProductsFromSheet = async (req: Request, res: Response) => {
   try {
     console.log('Starting product sync from Google Sheet...');
     const products = await getProductsFromSheet();
-    if (!products) {
-      console.warn('Sync failed: No products fetched from sheet.');
-      return res.status(400).json({ message: 'Could not fetch products from Google Sheet. Check your settings.' });
+    
+    if (products === null) {
+      return res.status(400).json({ 
+        message: 'Google Sheet sync is not configured or is disabled. Please check your settings and ensure all credentials are provided and the "Enabled" toggle is on.' 
+      });
+    }
+
+    if (products.length === 0) {
+      return res.status(400).json({ message: 'No products found in your Google Sheet. Please ensure your "Products" sheet has data rows below the header.' });
     }
 
     console.log(`Fetched ${products.length} products. Starting Firestore sync...`);
@@ -502,7 +504,7 @@ export const syncProductsFromSheet = async (req: Request, res: Response) => {
     let syncedCount = 0;
 
     for (let i = 0; i < products.length; i += BATCH_SIZE) {
-      const batch = db.batch();
+      const batch = getDb().batch();
       const chunk = products.slice(i, i + BATCH_SIZE);
       
       for (const product of chunk) {
@@ -510,7 +512,7 @@ export const syncProductsFromSheet = async (req: Request, res: Response) => {
           console.warn('Skipping product without ID:', product.name);
           continue;
         }
-        const productRef = db.collection('products').doc(product.id);
+        const productRef = getDb().collection('products').doc(product.id);
         batch.set(productRef, product, { merge: true });
         syncedCount++;
       }
@@ -523,6 +525,15 @@ export const syncProductsFromSheet = async (req: Request, res: Response) => {
     res.json({ message: `Successfully synced ${syncedCount} products from Google Sheet.` });
   } catch (error: any) {
     console.error('Sync error:', error);
+    
+    // If it's a permission error, provide a very specific guide
+    if (error.message.includes('PERMISSION_DENIED') || error.message.includes('Permission Denied')) {
+      return res.status(403).json({ 
+        message: 'Sync failed: Permission Denied',
+        error: 'The server does not have permission to access your settings. This is common in remixed apps. Please go to the "Settings" menu and re-run the Firebase setup to grant the necessary permissions to this new project.'
+      });
+    }
+
     res.status(500).json({ 
       message: 'Server error during product sync',
       error: error.message 

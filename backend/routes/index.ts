@@ -44,7 +44,9 @@ router.delete('/admin/users/:id', authenticate, authorize(['admin']), adminContr
 router.get('/admin/settings/google-sheet', authenticate, authorize(['admin']), adminController.getGoogleSheetSettings);
 router.put('/admin/settings/google-sheet', authenticate, authorize(['admin']), adminController.updateGoogleSheetSettings);
 router.post('/admin/settings/google-sheet/test', authenticate, authorize(['admin']), adminController.testGoogleSheetConnection);
-router.post('/admin/settings/google-sheet/sync-products', authenticate, authorize(['admin']), adminController.syncProductsFromSheet);
+
+// Top-level sync route to avoid proxy blocks
+router.post('/sync-products', authenticate, authorize(['admin']), adminController.syncProductsFromSheet);
 
 // Drive Debug Route
 router.get('/admin/test-drive', authenticate, authorize(['admin']), async (req, res) => {

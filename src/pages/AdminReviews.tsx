@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { collection, query, getDocs, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Review, Product } from '../types';
-import { Search, Filter, Star, Trash2, Eye, Loader2, Package, User, Calendar, X } from 'lucide-react';
+import { Search, Filter, Star, Trash2, Eye, Loader2, Package, User, Calendar, X, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn, getProxyUrl } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import Modal from '../components/Modal';
 
 export default function AdminReviews() {
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -13,6 +14,7 @@ export default function AdminReviews() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
+  const [reviewToDelete, setReviewToDelete] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -42,16 +44,22 @@ export default function AdminReviews() {
     fetchData();
   }, []);
 
-  const handleDeleteReview = async (reviewId: string) => {
-    if (!window.confirm('Are you sure you want to delete this review?')) return;
+  const handleDeleteReview = (reviewId: string) => {
+    setReviewToDelete(reviewId);
+  };
+
+  const executeDeleteReview = async () => {
+    if (!reviewToDelete) return;
     
     try {
-      await deleteDoc(doc(db, 'reviews', reviewId));
-      setReviews(reviews.filter(r => r.id !== reviewId));
+      await deleteDoc(doc(db, 'reviews', reviewToDelete));
+      setReviews(reviews.filter(r => r.id !== reviewToDelete));
       toast.success('Review deleted successfully');
       setSelectedReview(null);
     } catch (error) {
       toast.error('Failed to delete review');
+    } finally {
+      setReviewToDelete(null);
     }
   };
 
@@ -262,6 +270,43 @@ export default function AdminReviews() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={!!reviewToDelete}
+        onClose={() => setReviewToDelete(null)}
+        title="Delete Review"
+        footer={
+          <>
+            <button
+              onClick={() => setReviewToDelete(null)}
+              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={executeDeleteReview}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Delete Review
+            </button>
+          </>
+        }
+      >
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-red-100 rounded-full">
+            <AlertTriangle className="w-6 h-6 text-red-600" />
+          </div>
+          <div>
+            <p className="text-gray-600 font-bold">
+              Are you sure you want to delete this review?
+            </p>
+            <p className="text-sm text-gray-500 mt-2">
+              This action cannot be undone.
+            </p>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

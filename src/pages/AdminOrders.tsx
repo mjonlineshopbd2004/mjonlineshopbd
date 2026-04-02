@@ -387,6 +387,24 @@ export default function AdminOrders() {
                 >
                   Close
                 </button>
+                {selectedOrder.paymentStatus === 'pending' && selectedOrder.paymentMethod !== 'cod' && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await updateDoc(doc(db, 'orders', selectedOrder.id), { paymentStatus: 'paid' });
+                        setOrders(orders.map(o => o.id === selectedOrder.id ? { ...o, paymentStatus: 'paid' } : o));
+                        setSelectedOrder({ ...selectedOrder, paymentStatus: 'paid' });
+                        toast.success('Payment marked as paid');
+                      } catch (error) {
+                        toast.error('Failed to update payment status');
+                      }
+                    }}
+                    className="bg-emerald-600 text-white px-8 py-4 rounded-xl font-black hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-lg shadow-emerald-600/20"
+                  >
+                    <CheckCircle2 className="h-5 w-5" />
+                    Mark as Paid
+                  </button>
+                )}
                 <div className="relative group">
                   <button className="bg-emerald-600 text-white px-8 py-4 rounded-xl font-black hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-lg shadow-emerald-600/20">
                     <span>Update Status</span>
