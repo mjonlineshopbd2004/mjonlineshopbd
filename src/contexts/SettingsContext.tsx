@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { CATEGORIES } from '../constants';
 
@@ -16,6 +16,23 @@ interface Category {
   image: string;
 }
 
+interface BankDetails {
+  id: string;
+  name: string;
+  accountName: string;
+  accountNumber: string;
+  branchName?: string;
+  logo: string;
+}
+
+interface MobileBankingDetails {
+  id: string;
+  name: string;
+  number: string;
+  type: 'personal' | 'merchant';
+  logo: string;
+}
+
 interface SiteSettings {
   storeName: string;
   shopTagline: string;
@@ -23,6 +40,9 @@ interface SiteSettings {
   phone: string;
   whatsappNumber: string;
   paymentNumber: string;
+  bkashNumber: string;
+  nagadNumber: string;
+  rocketNumber: string;
   email: string;
   address: string;
   facebook: string;
@@ -34,37 +54,57 @@ interface SiteSettings {
   topBannerText: string;
   topBannerLink: string;
   enableImageSearch: boolean;
+  enableBkash: boolean;
+  enableNagad: boolean;
+  enableRocket: boolean;
+  enableBankTransfer: boolean;
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountName: string;
   primaryColor: string;
   bannerTextColor: string;
   bannerBgColor: string;
   banners: Banner[];
   smallBanners: Banner[];
   categories: Category[];
+  banks: BankDetails[];
+  mobileBanking: MobileBankingDetails[];
 }
 
 interface SettingsContextType {
   settings: SiteSettings;
+  updateSettings: (newSettings: SiteSettings) => Promise<void>;
   loading: boolean;
 }
 
-const defaultSettings: SiteSettings = {
+export const defaultSettings: SiteSettings = {
   storeName: 'MJ ONLINE SHOP BD',
   shopTagline: 'Premium Online Shop',
   logoUrl: '',
-  phone: '01810580592',
-  whatsappNumber: '01810580592',
-  paymentNumber: '01810580592',
+  phone: '01610880813',
+  whatsappNumber: '01610880813',
+  paymentNumber: '01610880813',
+  bkashNumber: '01610880813',
+  nagadNumber: '01610880813',
+  rocketNumber: '01610880813',
   email: 'mjonlineshopbd@gmail.com',
   address: 'Dhaka, Bangladesh',
   facebook: '',
   instagram: '',
   youtube: '',
   twitter: '',
-  deliveryChargeInside: 60,
-  deliveryChargeOutside: 120,
-  topBannerText: 'Free Delivery on orders over ৳2000!',
-  topBannerLink: '',
+  deliveryChargeInside: 80,
+  deliveryChargeOutside: 150,
+  topBannerText: 'Free Delivery on orders over ৳10000',
+  topBannerLink: '/products',
   enableImageSearch: true,
+  enableBkash: true,
+  enableNagad: true,
+  enableRocket: true,
+  enableBankTransfer: true,
+  bankName: 'Nexus Bank',
+  bankAccountNumber: '123.456.7890',
+  bankAccountName: 'MJ Online Shop',
   primaryColor: '#10b981',
   bannerTextColor: '#ffffff',
   bannerBgColor: '#111827',
@@ -78,6 +118,19 @@ const defaultSettings: SiteSettings = {
     { name: 'Watches', image: 'https://picsum.photos/seed/watches/600/800' },
     { name: 'Electronics & Gadgets', image: 'https://picsum.photos/seed/electronics/600/800' },
     { name: 'Home & Kitchen', image: 'https://picsum.photos/seed/kitchen/600/800' },
+  ],
+  banks: [
+    { id: 'nexus', name: 'Nexus', accountName: 'MJ Online Shop', accountNumber: '123.456.7890', logo: 'https://logo.clearbit.com/dutchbanglabank.com' },
+    { id: 'citybank', name: 'City Bank', accountName: 'MJ Online Shop', accountNumber: '123.456.7890', logo: 'https://logo.clearbit.com/thecitybank.com' },
+    { id: 'bracbank', name: 'Brac Bank', accountName: 'MJ Online Shop', accountNumber: '123.456.7890', logo: 'https://logo.clearbit.com/bracbank.com' },
+    { id: 'trustbank', name: 'Trust Bank', accountName: 'MJ Online Shop', accountNumber: '123.456.7890', logo: 'https://logo.clearbit.com/tblbd.com' },
+    { id: 'primebank', name: 'Prime Bank', accountName: 'MJ Online Shop', accountNumber: '123.456.7890', logo: 'https://logo.clearbit.com/primebank.com.bd' },
+    { id: 'nrbcbank', name: 'NRBC Bank', accountName: 'MJ Online Shop', accountNumber: '123.456.7890', logo: 'https://logo.clearbit.com/nrbcommercialbank.com' },
+  ],
+  mobileBanking: [
+    { id: 'bkash', name: 'bKash', number: '01810580592', type: 'personal', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Bkash_logo.svg/1200px-Bkash_logo.svg.png' },
+    { id: 'nagad', name: 'Nagad', number: '01810580592', type: 'personal', logo: 'https://download.logo.wine/logo/Nagad/Nagad-Logo.wine.png' },
+    { id: 'rocket', name: 'Rocket', number: '01810580592', type: 'personal', logo: 'https://download.logo.wine/logo/Rocket_(mobile_banking_service)/Rocket_(mobile_banking_service)-Logo.wine.png' },
   ],
 };
 
@@ -105,8 +158,18 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     return () => unsub();
   }, []);
 
+  const updateSettings = async (newSettings: SiteSettings) => {
+    try {
+      const { ...dataToSave } = newSettings;
+      await setDoc(doc(db, 'settings', 'site'), dataToSave);
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      throw error;
+    }
+  };
+
   return (
-    <SettingsContext.Provider value={{ settings, loading }}>
+    <SettingsContext.Provider value={{ settings, updateSettings, loading }}>
       {children}
     </SettingsContext.Provider>
   );

@@ -33,12 +33,10 @@ export default function AdminTransactions() {
   const fetchTransactions = async () => {
     setLoading(true);
     try {
-      // Fetch all orders that are NOT Cash on Delivery
+      // Fetch all orders
       // This allows admins to see pending manual payments (bKash, etc.) for verification
       const q = query(
         collection(db, 'orders'), 
-        where('paymentMethod', '!=', 'cod'),
-        orderBy('paymentMethod'),
         orderBy('createdAt', 'desc')
       );
       const querySnapshot = await getDocs(q);
@@ -49,8 +47,7 @@ export default function AdminTransactions() {
       try {
         const qAll = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
         const snapAll = await getDocs(qAll);
-        const allOrders = snapAll.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
-        setTransactions(allOrders.filter(o => o.paymentMethod !== 'cod'));
+        setTransactions(snapAll.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order)));
       } catch (err) {
         console.error("Fallback fetch failed:", err);
       }
@@ -137,13 +134,16 @@ export default function AdminTransactions() {
                     <p className="text-[10px] text-gray-500 uppercase tracking-widest font-black">Order #{transaction.id.slice(-6).toUpperCase()}</p>
                   </td>
                   <td className="px-8 py-6">
-                    <p className="font-black text-white text-lg">{formatPrice(transaction.total)}</p>
-                    <span className={cn(
-                      "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest",
-                      transaction.paymentStatus === 'paid' ? "bg-primary/10 text-primary" : "bg-yellow-500/10 text-yellow-500"
-                    )}>
-                      {transaction.paymentStatus}
-                    </span>
+                    <p className="font-black text-white text-lg">{formatPrice(transaction.payableAmount)}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={cn(
+                        "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest",
+                        transaction.paymentStatus === 'paid' ? "bg-primary/10 text-primary" : "bg-yellow-500/10 text-yellow-500"
+                      )}>
+                        {transaction.paymentStatus}
+                      </span>
+                      <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">({transaction.paymentType})</span>
+                    </div>
                   </td>
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-2">
@@ -215,7 +215,10 @@ export default function AdminTransactions() {
                   </div>
                   <div>
                     <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Amount Paid</p>
-                    <p className="text-2xl font-black text-primary">{formatPrice(selectedTransaction.total)}</p>
+                    <p className="text-2xl font-black text-primary">{formatPrice(selectedTransaction.payableAmount)}</p>
+                    <p className="text-[10px] text-gray-500 font-bold mt-1">
+                      {selectedTransaction.paymentType} of {formatPrice(selectedTransaction.total)}
+                    </p>
                   </div>
                   <div>
                     <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Date</p>

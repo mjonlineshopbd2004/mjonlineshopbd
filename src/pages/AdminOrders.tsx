@@ -160,7 +160,7 @@ export default function AdminOrders() {
                       )}
                       <div>
                         <p className="font-black text-white group-hover:text-primary transition-colors">#{order.id.slice(-8).toUpperCase()}</p>
-                        <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">{order.paymentMethod}</p>
+                        <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">{order.paymentMethod} ({order.paymentType})</p>
                       </div>
                     </div>
                   </td>
@@ -251,15 +251,21 @@ export default function AdminOrders() {
                   </div>
                   <div className="bg-white/5 p-6 rounded-3xl space-y-3 border border-white/5">
                     <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Payment</p>
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="h-5 w-5 text-gray-500" />
-                      <span className="font-black text-white uppercase text-sm">{selectedOrder.paymentMethod}</span>
-                      <span className={cn(
-                        "px-2 py-0.5 rounded text-[10px] font-black uppercase",
-                        selectedOrder.paymentStatus === 'paid' ? "bg-primary/10 text-primary" : "bg-yellow-500/10 text-yellow-500"
-                      )}>
-                        {selectedOrder.paymentStatus}
-                      </span>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="h-5 w-5 text-gray-500" />
+                        <span className="font-black text-white uppercase text-sm">{selectedOrder.paymentMethod} ({selectedOrder.paymentType})</span>
+                        <span className={cn(
+                          "px-2 py-0.5 rounded text-[10px] font-black uppercase",
+                          selectedOrder.paymentStatus === 'paid' ? "bg-primary/10 text-primary" : "bg-yellow-500/10 text-yellow-500"
+                        )}>
+                          {selectedOrder.paymentStatus}
+                        </span>
+                      </div>
+                      <p className="text-xs font-bold text-gray-400">
+                        Payable: <span className="text-primary">{formatPrice(selectedOrder.payableAmount)}</span> 
+                        {selectedOrder.paymentType === '50%' && ` (of ${formatPrice(selectedOrder.total)})`}
+                      </p>
                     </div>
                     {selectedOrder.transactionId && (
                       <p className="text-xs font-black text-primary mt-2">TXID: {selectedOrder.transactionId}</p>
@@ -387,7 +393,7 @@ export default function AdminOrders() {
                 >
                   Close
                 </button>
-                {selectedOrder.paymentStatus === 'pending' && selectedOrder.paymentMethod !== 'cod' && (
+                {selectedOrder.paymentStatus === 'pending' && (
                   <button
                     onClick={async () => {
                       try {

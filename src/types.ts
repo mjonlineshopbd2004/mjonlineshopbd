@@ -47,7 +47,8 @@ export interface CartItem extends Product {
 }
 
 export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
-export type PaymentMethod = 'bkash' | 'nagad' | 'rocket' | 'card' | 'cod';
+export type PaymentMethod = 'bkash' | 'nagad' | 'rocket' | 'bank';
+export type PaymentType = '50%' | '100%';
 export type DeliveryArea = 'inside-dhaka' | 'outside-dhaka';
 
 export interface Order {
@@ -64,6 +65,8 @@ export interface Order {
   total: number;
   status: OrderStatus;
   paymentMethod: PaymentMethod;
+  paymentType: PaymentType;
+  payableAmount: number;
   paymentStatus: 'pending' | 'paid';
   deliveryArea: DeliveryArea;
   transactionId?: string;

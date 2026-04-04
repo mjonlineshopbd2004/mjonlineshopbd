@@ -36,7 +36,7 @@ export default function TopBanner() {
             <span style={{ color: 'var(--banner-text, #ffffff)' }}>{settings.email}</span>
           </div>
           <div className="hidden sm:block">
-            <span className="text-primary">Cash on Delivery Available</span>
+            <span className="text-primary">50% & 100% Payment Options</span>
           </div>
         </div>
       </div>

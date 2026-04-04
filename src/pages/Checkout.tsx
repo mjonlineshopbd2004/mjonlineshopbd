@@ -73,7 +73,8 @@ export default function Checkout() {
     phone: profile?.phone || '',
     address: profile?.address || '',
     deliveryArea: 'inside-dhaka' as 'inside-dhaka' | 'outside-dhaka',
-    paymentMethod: 'cod' as 'bkash' | 'nagad' | 'rocket' | 'cod',
+    paymentMethod: 'bkash' as 'bkash' | 'nagad' | 'rocket',
+    paymentType: '100%' as '50%' | '100%',
     transactionId: '',
     customerNote: '',
     paymentScreenshot: '',
@@ -117,11 +118,12 @@ export default function Checkout() {
     ? settings.deliveryChargeInside 
     : settings.deliveryChargeOutside;
   const total = selectedSubtotal + deliveryCharge;
+  const payableAmount = formData.paymentType === '50%' ? total / 2 : total;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
-      toast.error('Please login to place an order');
+      toast.error('Please login to continue');
       setAuthModalOpen(true);
       return;
     }
@@ -131,66 +133,16 @@ export default function Checkout() {
       return;
     }
 
-    const isMobileBanking = ['bkash', 'nagad', 'rocket'].includes(formData.paymentMethod);
-    if (isMobileBanking && !formData.transactionId) {
-      toast.error('Please provide the Transaction ID for your payment');
-      return;
-    }
-
-    if (isMobileBanking && !screenshotFile) {
-      toast.error('Please upload a screenshot of your payment');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      let screenshotUrl = '';
-      if (screenshotFile) {
-        const idToken = await user.getIdToken();
-        const uploadedUrl = await uploadFile(screenshotFile, idToken);
-        if (!uploadedUrl) {
-          setIsSubmitting(false);
-          return;
-        }
-        screenshotUrl = uploadedUrl;
-      }
-
-      const orderData = {
-        userId: user.uid,
-        customerName: formData.name,
-        customerEmail: user.email,
-        phone: formData.phone,
-        address: formData.address,
-        items: selectedItems,
-        subtotal: selectedSubtotal,
-        deliveryCharge,
-        discount: 0,
-        total,
-        status: 'pending',
-        paymentMethod: formData.paymentMethod,
-        paymentStatus: 'pending',
-        deliveryArea: formData.deliveryArea,
-        transactionId: formData.transactionId,
-        paymentScreenshot: screenshotUrl,
-        customerNote: formData.customerNote,
-        createdAt: new Date().toISOString(),
-      };
-
-      try {
-        const docRef = await addDoc(collection(db, 'orders'), orderData);
-        
-        clearCart();
-        navigate(`/order-confirmation/${docRef.id}`);
-        toast.success('Order placed successfully!');
-      } catch (error) {
-        handleFirestoreError(error, OperationType.CREATE, 'orders');
-      }
-    } catch (error) {
-      console.error("Error placing order:", error);
-      toast.error('Failed to place order. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    navigate('/payment', { 
+      state: { 
+        formData, 
+        selectedItems, 
+        selectedSubtotal, 
+        deliveryCharge, 
+        total, 
+        payableAmount 
+      } 
+    });
   };
 
   if (selectedItems.length === 0) {
@@ -300,97 +252,40 @@ export default function Checkout() {
               </div>
             </section>
 
-            {/* Payment Method */}
-            <section>
-              <div className="flex items-center space-x-3 mb-8">
+            {/* Payment Type */}
+            <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center space-x-3 mb-4">
                 <div className="bg-orange-100 p-3 rounded-2xl"><CreditCard className="h-6 w-6 text-orange-600" /></div>
-                <h2 className="text-2xl font-bold tracking-tight text-gray-900">Payment Method</h2>
+                <h2 className="text-2xl font-bold tracking-tight text-gray-900">Payment Type</h2>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {PAYMENT_METHODS.map((method) => (
+              <p className="text-gray-600 font-bold mb-6">নিচের রেঞ্জ থেকে আপনার অগ্রিম পেমেন্ট পার্সেন্ট সিলেক্ট করুন</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  { id: '100%', name: 'Pay Now 100%', description: 'Pay the full amount now' }
+                ].map((type) => (
                   <button
-                    key={method.id}
+                    key={type.id}
                     type="button"
-                    onClick={() => setFormData({ ...formData, paymentMethod: method.id as any })}
+                    onClick={() => setFormData({ ...formData, paymentType: type.id as any })}
                     className={cn(
-                      "flex flex-col items-center justify-center p-6 rounded-3xl border-2 transition-all gap-3",
-                      formData.paymentMethod === method.id
+                      "flex items-center justify-between p-6 rounded-3xl border-2 transition-all",
+                      formData.paymentType === type.id
                         ? "border-orange-600 bg-orange-50 shadow-lg shadow-orange-100"
                         : "border-gray-100 bg-white hover:border-orange-200"
                     )}
                   >
-                    <span className="text-3xl">{method.icon}</span>
-                    <p className="font-bold text-gray-900">{method.name}</p>
-                    {formData.paymentMethod === method.id && <CheckCircle2 className="h-5 w-5 text-orange-600" />}
+                    <div className="text-left">
+                      <p className="font-bold text-gray-900">{type.name}</p>
+                      <p className="text-sm text-gray-500 font-bold">{type.description}</p>
+                    </div>
+                    {formData.paymentType === type.id && <CheckCircle2 className="h-6 w-6 text-orange-600" />}
                   </button>
                 ))}
               </div>
-              
-              {formData.paymentMethod !== 'cod' && (
-                <div className="mt-6 p-6 bg-orange-50 rounded-3xl border border-orange-100 space-y-6">
-                  <div>
-                    <p className="text-orange-800 font-bold mb-2">Payment Instructions:</p>
-                    <p className="text-orange-700 text-sm">
-                      Please send the total amount to <span className="font-bold text-orange-900">{settings.paymentNumber || '01810580592'}</span> (Personal) via <span className="font-bold capitalize text-orange-900">{formData.paymentMethod}</span> and provide the transaction ID and screenshot below.
-                    </p>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-orange-800 uppercase tracking-widest">Transaction ID</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="Enter Transaction ID"
-                        className="w-full bg-white border-2 border-orange-200 focus:border-orange-500 rounded-2xl px-6 py-4 outline-none transition-all font-bold text-orange-900"
-                        value={formData.transactionId}
-                        onChange={(e) => setFormData({ ...formData, transactionId: e.target.value })}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-orange-800 uppercase tracking-widest">Payment Screenshot</label>
-                      <div className="relative group">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          required
-                          onChange={handleScreenshotChange}
-                          className="hidden"
-                          id="screenshot-upload"
-                        />
-                        <label
-                          htmlFor="screenshot-upload"
-                          className={cn(
-                            "flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-2xl cursor-pointer transition-all",
-                            screenshotPreview 
-                              ? "border-orange-500 bg-white" 
-                              : "border-orange-200 bg-white/50 hover:border-orange-400 hover:bg-white"
-                          )}
-                        >
-                          {screenshotPreview ? (
-                            <div className="relative w-full h-full p-2">
-                              <img src={screenshotPreview} alt="Preview" className="w-full h-full object-contain rounded-xl" />
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl">
-                                <ImageIcon className="h-8 w-8 text-white" />
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              <Upload className="h-8 w-8 text-orange-400 mb-2" />
-                              <span className="text-sm font-bold text-orange-600">Click to upload screenshot</span>
-                            </>
-                          )}
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Removed Bank/Card Payment section */}
             </section>
-          </form>
+
+            {/* Payment Method moved to separate page */}
+        </form>
         </div>
 
         {/* Order Summary Sidebar */}
@@ -426,18 +321,24 @@ export default function Checkout() {
                 <span className="text-xl font-bold tracking-tight">Total</span>
                 <span className="text-3xl font-bold tracking-tight text-orange-500">{formatPrice(total)}</span>
               </div>
+              {formData.paymentType && (
+                <div className="flex justify-between items-center text-orange-400 font-bold">
+                  <span>Payable Now ({formData.paymentType})</span>
+                  <span className="text-xl">{formatPrice(payableAmount)}</span>
+                </div>
+              )}
             </div>
 
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="w-full bg-orange-600 text-white py-5 rounded-2xl font-bold text-xl shadow-xl hover:bg-orange-700 transition-all flex items-center justify-center space-x-3 disabled:opacity-50"
+              disabled={isSubmitting || !formData.paymentType}
+              className="w-full bg-orange-600 text-white py-5 rounded-2xl font-bold text-xl shadow-xl hover:bg-orange-700 transition-all flex items-center justify-center space-x-3 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 <div className="h-6 w-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
               ) : (
                 <>
-                  <span>Place Order</span>
+                  <span>Proceed to Payment</span>
                   <CheckCircle2 className="h-6 w-6" />
                 </>
               )}
