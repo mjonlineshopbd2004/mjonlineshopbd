@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSettings, defaultSettings } from '../contexts/SettingsContext';
+import { useSettings, defaultSettings, SiteSettings } from '../contexts/SettingsContext';
 import { 
   Save, 
   Truck, 
@@ -22,7 +22,8 @@ import {
   MessageSquare,
   AlertTriangle,
   RefreshCw,
-  RotateCcw
+  RotateCcw,
+  Share2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
@@ -36,6 +37,8 @@ export default function AdminSettings() {
   const { user } = useAuth();
   const [formData, setFormData] = useState(settings);
   const [isSaving, setIsSaving] = useState(false);
+  const [clearDataConfirm, setClearDataConfirm] = useState('');
+  const [resetSettingsConfirm, setResetSettingsConfirm] = useState('');
 
   useEffect(() => {
     setFormData(settings);
@@ -89,6 +92,57 @@ export default function AdminSettings() {
     }
   };
 
+  const handlePaymentLogoUpload = async (field: keyof SiteSettings, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    const toastId = toast.loading('Uploading logo...');
+    try {
+      const idToken = await user.getIdToken();
+      const url = await uploadFile(file, idToken);
+      if (url) {
+        setFormData({ ...formData, [field]: url });
+        toast.success('Logo uploaded successfully', { id: toastId });
+      }
+    } catch (error) {
+      toast.error('Failed to upload logo', { id: toastId });
+    }
+  };
+
+  const addBank = () => {
+    const newBank = { id: Date.now().toString(), name: '', accountName: '', accountNumber: '', logo: '' };
+    setFormData({ ...formData, banks: [...(formData.banks || []), newBank] });
+  };
+
+  const removeBank = (index: number) => {
+    const newBanks = [...(formData.banks || [])];
+    newBanks.splice(index, 1);
+    setFormData({ ...formData, banks: newBanks });
+  };
+
+  const updateBank = (index: number, field: string, value: string) => {
+    const newBanks = [...(formData.banks || [])];
+    newBanks[index] = { ...newBanks[index], [field]: value };
+    setFormData({ ...formData, banks: newBanks });
+  };
+
+  const handleBankLogoUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    const toastId = toast.loading('Uploading bank logo...');
+    try {
+      const idToken = await user.getIdToken();
+      const url = await uploadFile(file, idToken);
+      if (url) {
+        updateBank(index, 'logo', url);
+        toast.success('Bank logo uploaded successfully', { id: toastId });
+      }
+    } catch (error) {
+      toast.error('Failed to upload bank logo', { id: toastId });
+    }
+  };
+
   const addBanner = (type: 'banners' | 'smallBanners') => {
     const newBanner = { topText: '', title: '', subtitle: '', image: '', link: '' };
     setFormData({ ...formData, [type]: [...(formData[type] || []), newBanner] });
@@ -107,11 +161,20 @@ export default function AdminSettings() {
   };
 
   const handleResetSettings = () => {
+    if (resetSettingsConfirm !== 'RESET SETTINGS') {
+      toast.error('Please type "RESET SETTINGS" to confirm');
+      return;
+    }
     setFormData(defaultSettings);
+    setResetSettingsConfirm('');
     toast.success('Settings reset to default values. Click "Save Changes" to apply.');
   };
 
   const handleClearData = async () => {
+    if (clearDataConfirm !== 'DELETE ALL DATA') {
+      toast.error('Please type "DELETE ALL DATA" to confirm');
+      return;
+    }
     const confirm = window.confirm('CRITICAL: This will delete ALL products, orders, and reviews. This cannot be undone. Are you absolutely sure?');
     if (!confirm) return;
 
@@ -126,6 +189,7 @@ export default function AdminSettings() {
         });
         await batch.commit();
       }
+      setClearDataConfirm('');
       toast.success('All store data cleared successfully', { id: toastId });
     } catch (error) {
       console.error('Error clearing data:', error);
@@ -143,7 +207,7 @@ export default function AdminSettings() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-32 text-gray-100 p-6">
-      <div className="flex justify-between items-center mb-10">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
         <div>
           <h1 className="text-4xl font-black tracking-tight text-white">Settings</h1>
           <p className="text-gray-400 font-bold text-sm mt-1">Configure your store information and preferences</p>
@@ -162,9 +226,47 @@ export default function AdminSettings() {
         </button>
       </div>
 
+      {/* Quick Navigation */}
+      <div className="bg-[#1a1a1a] p-2 rounded-2xl border border-white/5 overflow-x-auto no-scrollbar sticky top-4 z-40 shadow-2xl backdrop-blur-xl">
+        <div className="flex items-center space-x-2 min-w-max">
+          {[
+            { id: 'general', label: 'General', icon: Store },
+            { id: 'features', label: 'Features', icon: SettingsIcon },
+            { id: 'payments', label: 'Payments', icon: CreditCard },
+            { id: 'banners', label: 'Banners', icon: ImageIcon },
+            { id: 'delivery', label: 'Delivery', icon: Truck },
+            { id: 'social', label: 'Social', icon: Share2 },
+            { id: 'danger', label: 'Danger', icon: Trash2 },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                const element = document.getElementById(item.id);
+                if (element) {
+                  const offset = 100;
+                  const bodyRect = document.body.getBoundingClientRect().top;
+                  const elementRect = element.getBoundingClientRect().top;
+                  const elementPosition = elementRect - bodyRect;
+                  const offsetPosition = elementPosition - offset;
+
+                  window.scrollTo({
+                    top: offsetPosition,
+                    behavior: 'smooth'
+                  });
+                }
+              }}
+              className="flex items-center px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest text-gray-400 hover:text-emerald-500 hover:bg-emerald-500/10 transition-all whitespace-nowrap group"
+            >
+              <item.icon className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="space-y-8">
         {/* General Information */}
-        <section className="bg-emerald-500/5 rounded-[32px] p-8 border border-emerald-500/10 shadow-2xl space-y-8">
+        <section id="general" className="bg-emerald-500/5 rounded-[32px] p-8 border border-emerald-500/10 shadow-2xl space-y-8">
           <div className="flex items-center space-x-4 pb-6 border-b border-emerald-500/10">
             <div className="p-3 bg-emerald-500/10 rounded-2xl">
               <Store className="h-7 w-7 text-emerald-500" />
@@ -288,10 +390,24 @@ export default function AdminSettings() {
               </div>
             </div>
           </div>
+          <div className="flex justify-end pt-6 border-t border-emerald-500/10">
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="flex items-center px-6 py-3 bg-emerald-600 text-white rounded-xl font-black text-base shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition-all disabled:opacity-50 active:scale-95"
+            >
+              {isSaving ? (
+                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Save Changes
+            </button>
+          </div>
         </section>
 
         {/* Feature Controls */}
-        <section className="bg-emerald-500/5 rounded-[32px] p-8 border border-emerald-500/10 shadow-2xl space-y-8">
+        <section id="features" className="bg-emerald-500/5 rounded-[32px] p-8 border border-emerald-500/10 shadow-2xl space-y-8">
           <div className="flex items-center space-x-4 pb-6 border-b border-emerald-500/10">
             <div className="p-3 bg-emerald-500/10 rounded-2xl">
               <SettingsIcon className="h-7 w-7 text-emerald-500" />
@@ -335,10 +451,24 @@ export default function AdminSettings() {
               </div>
             </div>
           </div>
+          <div className="flex justify-end pt-6 border-t border-emerald-500/10">
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="flex items-center px-6 py-3 bg-emerald-600 text-white rounded-xl font-black text-base shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition-all disabled:opacity-50 active:scale-95"
+            >
+              {isSaving ? (
+                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Save Changes
+            </button>
+          </div>
         </section>
 
         {/* Payment Settings */}
-        <section className="bg-blue-500/5 rounded-[32px] p-8 border border-blue-500/10 shadow-2xl space-y-8">
+        <section id="payments" className="bg-blue-500/5 rounded-[32px] p-8 border border-blue-500/10 shadow-2xl space-y-8">
           <div className="flex items-center space-x-4 pb-6 border-b border-blue-500/10">
             <div className="p-3 bg-blue-500/10 rounded-2xl">
               <CreditCard className="h-7 w-7 text-blue-500" />
@@ -351,8 +481,14 @@ export default function AdminSettings() {
             <div className="bg-[#1a1a1a] p-6 rounded-[28px] border border-white/10 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-pink-500/10 rounded-xl flex items-center justify-center">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Bkash_logo.svg/1200px-Bkash_logo.svg.png" className="w-6 h-6 object-contain" alt="bKash" />
+                  <div className="w-10 h-10 bg-pink-500/10 rounded-xl flex items-center justify-center overflow-hidden relative group">
+                    <img src={formData.bkashLogo} className="w-full h-full object-contain p-1" alt="bKash" />
+                    <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <label className="cursor-pointer p-1 bg-pink-500 rounded-lg text-white">
+                        <Upload className="h-3 w-3" />
+                        <input type="file" className="hidden" accept="image/*" onChange={(e) => handlePaymentLogoUpload('bkashLogo', e)} />
+                      </label>
+                    </div>
                   </div>
                   <h3 className="font-black text-white text-base">bKash</h3>
                 </div>
@@ -369,15 +505,26 @@ export default function AdminSettings() {
                   )} />
                 </button>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">bKash Number</label>
-                <input
-                  type="tel"
-                  className="w-full bg-[#111111] border border-white/10 focus:border-pink-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white"
-                  value={formData.bkashNumber}
-                  onChange={(e) => setFormData({ ...formData, bkashNumber: e.target.value })}
-                  placeholder="01XXXXXXXXX"
-                />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Logo Link</label>
+                  <input
+                    type="text"
+                    className="w-full bg-[#111111] border border-white/10 focus:border-pink-500 rounded-xl px-4 py-2 outline-none transition-all font-bold text-xs text-blue-400"
+                    value={formData.bkashLogo}
+                    onChange={(e) => setFormData({ ...formData, bkashLogo: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">bKash Number</label>
+                  <input
+                    type="tel"
+                    className="w-full bg-[#111111] border border-white/10 focus:border-pink-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white"
+                    value={formData.bkashNumber}
+                    onChange={(e) => setFormData({ ...formData, bkashNumber: e.target.value })}
+                    placeholder="01XXXXXXXXX"
+                  />
+                </div>
               </div>
             </div>
 
@@ -385,8 +532,14 @@ export default function AdminSettings() {
             <div className="bg-[#1a1a1a] p-6 rounded-[28px] border border-white/10 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center">
-                    <img src="https://download.logo.wine/logo/Nagad/Nagad-Logo.wine.png" className="w-8 h-8 object-contain" alt="Nagad" />
+                  <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center overflow-hidden relative group">
+                    <img src={formData.nagadLogo} className="w-full h-full object-contain p-1" alt="Nagad" />
+                    <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <label className="cursor-pointer p-1 bg-orange-500 rounded-lg text-white">
+                        <Upload className="h-3 w-3" />
+                        <input type="file" className="hidden" accept="image/*" onChange={(e) => handlePaymentLogoUpload('nagadLogo', e)} />
+                      </label>
+                    </div>
                   </div>
                   <h3 className="font-black text-white text-base">Nagad</h3>
                 </div>
@@ -403,15 +556,26 @@ export default function AdminSettings() {
                   )} />
                 </button>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Nagad Number</label>
-                <input
-                  type="tel"
-                  className="w-full bg-[#111111] border border-white/10 focus:border-orange-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white"
-                  value={formData.nagadNumber}
-                  onChange={(e) => setFormData({ ...formData, nagadNumber: e.target.value })}
-                  placeholder="01XXXXXXXXX"
-                />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Logo Link</label>
+                  <input
+                    type="text"
+                    className="w-full bg-[#111111] border border-white/10 focus:border-orange-500 rounded-xl px-4 py-2 outline-none transition-all font-bold text-xs text-blue-400"
+                    value={formData.nagadLogo}
+                    onChange={(e) => setFormData({ ...formData, nagadLogo: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Nagad Number</label>
+                  <input
+                    type="tel"
+                    className="w-full bg-[#111111] border border-white/10 focus:border-orange-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white"
+                    value={formData.nagadNumber}
+                    onChange={(e) => setFormData({ ...formData, nagadNumber: e.target.value })}
+                    placeholder="01XXXXXXXXX"
+                  />
+                </div>
               </div>
             </div>
 
@@ -419,8 +583,14 @@ export default function AdminSettings() {
             <div className="bg-[#1a1a1a] p-6 rounded-[28px] border border-white/10 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center">
-                    <img src="https://download.logo.wine/logo/Rocket_(mobile_banking_service)/Rocket_(mobile_banking_service)-Logo.wine.png" className="w-8 h-8 object-contain" alt="Rocket" />
+                  <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center overflow-hidden relative group">
+                    <img src={formData.rocketLogo} className="w-full h-full object-contain p-1" alt="Rocket" />
+                    <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <label className="cursor-pointer p-1 bg-purple-500 rounded-lg text-white">
+                        <Upload className="h-3 w-3" />
+                        <input type="file" className="hidden" accept="image/*" onChange={(e) => handlePaymentLogoUpload('rocketLogo', e)} />
+                      </label>
+                    </div>
                   </div>
                   <h3 className="font-black text-white text-base">Rocket</h3>
                 </div>
@@ -437,78 +607,259 @@ export default function AdminSettings() {
                   )} />
                 </button>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Rocket Number</label>
-                <input
-                  type="tel"
-                  className="w-full bg-[#111111] border border-white/10 focus:border-purple-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white"
-                  value={formData.rocketNumber}
-                  onChange={(e) => setFormData({ ...formData, rocketNumber: e.target.value })}
-                  placeholder="01XXXXXXXXX"
-                />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Logo Link</label>
+                  <input
+                    type="text"
+                    className="w-full bg-[#111111] border border-white/10 focus:border-purple-500 rounded-xl px-4 py-2 outline-none transition-all font-bold text-xs text-blue-400"
+                    value={formData.rocketLogo}
+                    onChange={(e) => setFormData({ ...formData, rocketLogo: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Rocket Number</label>
+                  <input
+                    type="tel"
+                    className="w-full bg-[#111111] border border-white/10 focus:border-purple-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white"
+                    value={formData.rocketNumber}
+                    onChange={(e) => setFormData({ ...formData, rocketNumber: e.target.value })}
+                    placeholder="01XXXXXXXXX"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Bank Transfer */}
+            {/* Upay */}
             <div className="bg-[#1a1a1a] p-6 rounded-[28px] border border-white/10 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
-                    <Globe className="w-5 h-5 text-blue-500" />
+                  <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center overflow-hidden relative group">
+                    <img src={formData.upayLogo} className="w-full h-full object-contain p-1" alt="Upay" />
+                    <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <label className="cursor-pointer p-1 bg-blue-500 rounded-lg text-white">
+                        <Upload className="h-3 w-3" />
+                        <input type="file" className="hidden" accept="image/*" onChange={(e) => handlePaymentLogoUpload('upayLogo', e)} />
+                      </label>
+                    </div>
                   </div>
-                  <h3 className="font-black text-white text-base">Bank Transfer</h3>
+                  <h3 className="font-black text-white text-base">Upay</h3>
                 </div>
                 <button
-                  onClick={() => setFormData({ ...formData, enableBankTransfer: !formData.enableBankTransfer })}
+                  onClick={() => setFormData({ ...formData, enableUpay: !formData.enableUpay })}
                   className={cn(
                     "w-12 h-6 rounded-full transition-all relative",
-                    formData.enableBankTransfer ? "bg-blue-500" : "bg-gray-800"
+                    formData.enableUpay ? "bg-blue-500" : "bg-gray-800"
                   )}
                 >
                   <div className={cn(
                     "absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-md",
-                    formData.enableBankTransfer ? "right-1" : "left-1"
+                    formData.enableUpay ? "right-1" : "left-1"
                   )} />
                 </button>
               </div>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Bank Name</label>
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Logo Link</label>
                   <input
                     type="text"
-                    className="w-full bg-[#111111] border border-white/10 focus:border-blue-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white"
-                    value={formData.bankName}
-                    onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
-                    placeholder="Nexus Bank"
+                    className="w-full bg-[#111111] border border-white/10 focus:border-blue-500 rounded-xl px-4 py-2 outline-none transition-all font-bold text-xs text-blue-400"
+                    value={formData.upayLogo}
+                    onChange={(e) => setFormData({ ...formData, upayLogo: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Account Name</label>
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Upay Number</label>
                   <input
-                    type="text"
+                    type="tel"
                     className="w-full bg-[#111111] border border-white/10 focus:border-blue-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white"
-                    value={formData.bankAccountName}
-                    onChange={(e) => setFormData({ ...formData, bankAccountName: e.target.value })}
-                    placeholder="MJ Online Shop"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Account Number</label>
-                  <input
-                    type="text"
-                    className="w-full bg-[#111111] border border-white/10 focus:border-blue-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white"
-                    value={formData.bankAccountNumber}
-                    onChange={(e) => setFormData({ ...formData, bankAccountNumber: e.target.value })}
-                    placeholder="123.456.7890"
+                    value={formData.upayNumber}
+                    onChange={(e) => setFormData({ ...formData, upayNumber: e.target.value })}
+                    placeholder="01XXXXXXXXX"
                   />
                 </div>
               </div>
             </div>
+
+            {/* Visa */}
+            <div className="bg-[#1a1a1a] p-6 rounded-[28px] border border-white/10 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-blue-900/10 rounded-xl flex items-center justify-center overflow-hidden relative group">
+                    <img src={formData.visaLogo} className="w-full h-full object-contain p-1" alt="Visa" />
+                    <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <label className="cursor-pointer p-1 bg-blue-900 rounded-lg text-white">
+                        <Upload className="h-3 w-3" />
+                        <input type="file" className="hidden" accept="image/*" onChange={(e) => handlePaymentLogoUpload('visaLogo', e)} />
+                      </label>
+                    </div>
+                  </div>
+                  <h3 className="font-black text-white text-base">Visa Card</h3>
+                </div>
+                <button
+                  onClick={() => setFormData({ ...formData, enableVisa: !formData.enableVisa })}
+                  className={cn(
+                    "w-12 h-6 rounded-full transition-all relative",
+                    formData.enableVisa ? "bg-blue-900" : "bg-gray-800"
+                  )}
+                >
+                  <div className={cn(
+                    "absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-md",
+                    formData.enableVisa ? "right-1" : "left-1"
+                  )} />
+                </button>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Logo Link</label>
+                <input
+                  type="text"
+                  className="w-full bg-[#111111] border border-white/10 focus:border-blue-900 rounded-xl px-4 py-2 outline-none transition-all font-bold text-xs text-blue-400"
+                  value={formData.visaLogo}
+                  onChange={(e) => setFormData({ ...formData, visaLogo: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {/* Mastercard */}
+            <div className="bg-[#1a1a1a] p-6 rounded-[28px] border border-white/10 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center overflow-hidden relative group">
+                    <img src={formData.mastercardLogo} className="w-full h-full object-contain p-1" alt="Mastercard" />
+                    <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <label className="cursor-pointer p-1 bg-red-500 rounded-lg text-white">
+                        <Upload className="h-3 w-3" />
+                        <input type="file" className="hidden" accept="image/*" onChange={(e) => handlePaymentLogoUpload('mastercardLogo', e)} />
+                      </label>
+                    </div>
+                  </div>
+                  <h3 className="font-black text-white text-base">Mastercard</h3>
+                </div>
+                <button
+                  onClick={() => setFormData({ ...formData, enableMastercard: !formData.enableMastercard })}
+                  className={cn(
+                    "w-12 h-6 rounded-full transition-all relative",
+                    formData.enableMastercard ? "bg-red-500" : "bg-gray-800"
+                  )}
+                >
+                  <div className={cn(
+                    "absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-md",
+                    formData.enableMastercard ? "right-1" : "left-1"
+                  )} />
+                </button>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Logo Link</label>
+                <input
+                  type="text"
+                  className="w-full bg-[#111111] border border-white/10 focus:border-red-500 rounded-xl px-4 py-2 outline-none transition-all font-bold text-xs text-blue-400"
+                  value={formData.mastercardLogo}
+                  onChange={(e) => setFormData({ ...formData, mastercardLogo: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Bank Management */}
+          <div className="space-y-6 pt-8 border-t border-blue-500/10">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-3">
+                <Globe className="h-5 w-5 text-blue-500" />
+                <h3 className="font-black text-white text-lg">Bank Transfer Options</h3>
+              </div>
+              <button
+                onClick={addBank}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-xl font-black text-xs hover:bg-blue-700 transition-all active:scale-95"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Bank
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {(formData.banks || []).map((bank, index) => (
+                <div key={bank.id} className="bg-[#1a1a1a] p-6 rounded-[28px] border border-white/10 relative group">
+                  <button
+                    onClick={() => removeBank(index)}
+                    className="absolute top-4 right-4 p-1.5 text-gray-700 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                  <div className="flex items-center space-x-4 mb-6">
+                    <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center overflow-hidden relative group/banklogo">
+                      {bank.logo ? (
+                        <img src={bank.logo} alt={bank.name} className="w-full h-full object-contain p-2" />
+                      ) : (
+                        <Globe className="h-6 w-6 text-gray-700" />
+                      )}
+                      <div className="absolute inset-0 bg-black/80 opacity-0 group-hover/banklogo:opacity-100 transition-opacity flex items-center justify-center">
+                        <label className="cursor-pointer p-1.5 bg-blue-500 rounded-lg text-white">
+                          <Upload className="h-3 w-3" />
+                          <input type="file" className="hidden" accept="image/*" onChange={(e) => handleBankLogoUpload(index, e)} />
+                        </label>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        className="w-full bg-transparent border-none focus:ring-0 p-0 font-black text-white text-lg placeholder:text-gray-800"
+                        placeholder="Bank Name"
+                        value={bank.name}
+                        onChange={(e) => updateBank(index, 'name', e.target.value)}
+                      />
+                      <input
+                        type="text"
+                        className="w-full bg-transparent border-none focus:ring-0 p-0 font-bold text-blue-400 text-[10px] placeholder:text-gray-800"
+                        placeholder="Logo URL"
+                        value={bank.logo}
+                        onChange={(e) => updateBank(index, 'logo', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Account Name</label>
+                      <input
+                        type="text"
+                        className="w-full bg-[#111111] border border-white/10 focus:border-blue-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white"
+                        value={bank.accountName}
+                        onChange={(e) => updateBank(index, 'accountName', e.target.value)}
+                        placeholder="MJ Online Shop"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Account Number</label>
+                      <input
+                        type="text"
+                        className="w-full bg-[#111111] border border-white/10 focus:border-blue-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white"
+                        value={bank.accountNumber}
+                        onChange={(e) => updateBank(index, 'accountNumber', e.target.value)}
+                        placeholder="123.456.7890"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-end pt-6 border-t border-blue-500/10">
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-base shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all disabled:opacity-50 active:scale-95"
+            >
+              {isSaving ? (
+                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Save Changes
+            </button>
           </div>
         </section>
 
         {/* Banner & Promotions */}
-        <section className="bg-emerald-500/5 rounded-[32px] p-8 border border-emerald-500/10 shadow-2xl space-y-8">
+        <section id="banners" className="bg-emerald-500/5 rounded-[32px] p-8 border border-emerald-500/10 shadow-2xl space-y-8">
           <div className="flex items-center space-x-4 pb-6 border-b border-emerald-500/10">
             <div className="p-3 bg-emerald-500/10 rounded-2xl">
               <Layout className="h-7 w-7 text-emerald-500" />
@@ -698,10 +1049,24 @@ export default function AdminSettings() {
               ))}
             </div>
           </div>
+          <div className="flex justify-end pt-6 border-t border-emerald-500/10">
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="flex items-center px-6 py-3 bg-emerald-600 text-white rounded-xl font-black text-base shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition-all disabled:opacity-50 active:scale-95"
+            >
+              {isSaving ? (
+                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Save Changes
+            </button>
+          </div>
         </section>
 
         {/* Delivery Charges */}
-        <section className="bg-emerald-500/5 rounded-[32px] p-8 border border-emerald-500/10 shadow-2xl space-y-8">
+        <section id="delivery" className="bg-emerald-500/5 rounded-[32px] p-8 border border-emerald-500/10 shadow-2xl space-y-8">
           <div className="flex items-center space-x-4 pb-6 border-b border-emerald-500/10">
             <div className="p-3 bg-emerald-500/10 rounded-2xl">
               <Truck className="h-7 w-7 text-emerald-500" />
@@ -729,10 +1094,24 @@ export default function AdminSettings() {
               />
             </div>
           </div>
+          <div className="flex justify-end pt-6 border-t border-emerald-500/10">
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="flex items-center px-6 py-3 bg-emerald-600 text-white rounded-xl font-black text-base shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition-all disabled:opacity-50 active:scale-95"
+            >
+              {isSaving ? (
+                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Save Changes
+            </button>
+          </div>
         </section>
 
         {/* Social Media Links */}
-        <section className="bg-emerald-500/5 rounded-[32px] p-8 border border-emerald-500/10 shadow-2xl space-y-8">
+        <section id="social" className="bg-emerald-500/5 rounded-[32px] p-8 border border-emerald-500/10 shadow-2xl space-y-8">
           <div className="flex items-center space-x-4 pb-6 border-b border-emerald-500/10">
             <div className="p-3 bg-emerald-500/10 rounded-2xl">
               <Globe className="h-7 w-7 text-emerald-500" />
@@ -790,10 +1169,24 @@ export default function AdminSettings() {
               </div>
             </div>
           </div>
+          <div className="flex justify-end pt-6 border-t border-emerald-500/10">
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="flex items-center px-6 py-3 bg-emerald-600 text-white rounded-xl font-black text-base shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition-all disabled:opacity-50 active:scale-95"
+            >
+              {isSaving ? (
+                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Save Changes
+            </button>
+          </div>
         </section>
 
         {/* Danger Zone */}
-        <section className="bg-red-500/5 rounded-[32px] p-8 border border-red-500/10 shadow-2xl space-y-8">
+        <section id="danger" className="bg-red-500/5 rounded-[32px] p-8 border border-red-500/10 shadow-2xl space-y-8">
           <div className="flex items-center space-x-4 pb-6 border-b border-red-500/10">
             <div className="p-3 bg-red-500/10 rounded-2xl">
               <AlertTriangle className="h-6 w-6 text-red-500" />
@@ -802,32 +1195,58 @@ export default function AdminSettings() {
           </div>
 
           <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-red-500/5 rounded-[24px] border border-red-500/10 gap-4">
-              <div>
-                <h3 className="font-black text-white text-base">Clear All Store Data</h3>
-                <p className="text-sm text-gray-500 font-bold mt-1">This will permanently delete all products, orders, and reviews. This action cannot be undone.</p>
+            <div className="flex flex-col p-6 bg-red-500/5 rounded-[24px] border border-red-500/10 gap-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-black text-white text-base">Clear All Store Data</h3>
+                  <p className="text-sm text-gray-500 font-bold mt-1">This will permanently delete all products, orders, and reviews. This action cannot be undone.</p>
+                </div>
+                <button
+                  onClick={handleClearData}
+                  disabled={clearDataConfirm !== 'DELETE ALL DATA'}
+                  className="flex items-center justify-center px-6 py-3 bg-red-500/10 text-red-500 rounded-xl font-black hover:bg-red-500 hover:text-white transition-all border border-red-500/20 active:scale-95 whitespace-nowrap disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-red-500/10 disabled:hover:text-red-500"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear All Data
+                </button>
               </div>
-              <button
-                onClick={handleClearData}
-                className="flex items-center justify-center px-6 py-3 bg-red-500/10 text-red-500 rounded-xl font-black hover:bg-red-500 hover:text-white transition-all border border-red-500/20 active:scale-95 whitespace-nowrap"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Clear All Data
-              </button>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-red-500/60 uppercase tracking-[0.2em] ml-1">Type "DELETE ALL DATA" to confirm</label>
+                <input
+                  type="text"
+                  placeholder="DELETE ALL DATA"
+                  className="w-full bg-black/40 border border-red-500/20 focus:border-red-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white placeholder:text-red-500/20"
+                  value={clearDataConfirm}
+                  onChange={(e) => setClearDataConfirm(e.target.value)}
+                />
+              </div>
             </div>
 
-            <div className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-orange-500/5 rounded-[24px] border border-orange-500/10 gap-4">
-              <div>
-                <h3 className="font-black text-white text-base">Reset Site Settings</h3>
-                <p className="text-sm text-gray-500 font-bold mt-1">Restore all site settings (banners, logo, colors, etc.) to their default values.</p>
+            <div className="flex flex-col p-6 bg-orange-500/5 rounded-[24px] border border-orange-500/10 gap-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-black text-white text-base">Reset Site Settings</h3>
+                  <p className="text-sm text-gray-500 font-bold mt-1">Restore all site settings (banners, logo, colors, etc.) to their default values.</p>
+                </div>
+                <button
+                  onClick={handleResetSettings}
+                  disabled={resetSettingsConfirm !== 'RESET SETTINGS'}
+                  className="flex items-center justify-center px-6 py-3 bg-orange-500/10 text-orange-500 rounded-xl font-black hover:bg-orange-500 hover:text-white transition-all border border-orange-500/20 active:scale-95 whitespace-nowrap disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-orange-500/10 disabled:hover:text-orange-500"
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Reset Settings
+                </button>
               </div>
-              <button
-                onClick={handleResetSettings}
-                className="flex items-center justify-center px-6 py-3 bg-orange-500/10 text-orange-500 rounded-xl font-black hover:bg-orange-500 hover:text-white transition-all border border-orange-500/20 active:scale-95 whitespace-nowrap"
-              >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Reset Settings
-              </button>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-orange-500/60 uppercase tracking-[0.2em] ml-1">Type "RESET SETTINGS" to confirm</label>
+                <input
+                  type="text"
+                  placeholder="RESET SETTINGS"
+                  className="w-full bg-black/40 border border-orange-500/20 focus:border-orange-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white placeholder:text-orange-500/20"
+                  value={resetSettingsConfirm}
+                  onChange={(e) => setResetSettingsConfirm(e.target.value)}
+                />
+              </div>
             </div>
           </div>
         </section>

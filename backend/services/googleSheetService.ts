@@ -15,7 +15,14 @@ export const getGoogleSheetConfig = async (): Promise<GoogleSheetConfig | null> 
       console.log('Google Sheet settings document not found in Firestore.');
       return null;
     }
-    return settingsDoc.data() as GoogleSheetConfig;
+    const config = settingsDoc.data() as GoogleSheetConfig;
+    console.log('Google Sheet Config fetched:', {
+      spreadsheetId: config.spreadsheetId,
+      clientEmail: config.clientEmail,
+      hasPrivateKey: !!config.privateKey,
+      enabled: config.enabled
+    });
+    return config;
   } catch (error: any) {
     console.error('Error fetching Google Sheet config:', error.message);
     // If it's a permission error, throw it so the caller knows something is wrong with the configuration
@@ -85,12 +92,7 @@ export const syncOrderToSheet = async (order: any) => {
     const sanitizedId = extractId(config.spreadsheetId);
     const formattedKey = getFormattedKey(config.privateKey);
     
-    if (!formattedKey) {
-      console.error('Sync failed: Invalid private key format.');
-      return;
-    }
-
-    console.log('Authenticating with Google Sheets API...');
+    console.log(`Authenticating with Google Sheets API using email: ${config.clientEmail.trim()} for spreadsheet: ${sanitizedId}`);
     const serviceAccountAuth = new JWT({
       email: config.clientEmail.trim(),
       key: formattedKey,
@@ -98,7 +100,15 @@ export const syncOrderToSheet = async (order: any) => {
     });
 
     const doc = new GoogleSpreadsheet(sanitizedId, serviceAccountAuth);
-    await doc.loadInfo();
+    try {
+      await doc.loadInfo();
+    } catch (loadError: any) {
+      console.error(`Failed to load spreadsheet ${sanitizedId}:`, loadError.message);
+      if (loadError.response) {
+        console.error('Full Google API Error Response (loadInfo):', JSON.stringify(loadError.response.data, null, 2));
+      }
+      throw new Error(`Google Sheets Access Denied: The Service Account (${config.clientEmail.trim()}) does not have permission to access spreadsheet ${sanitizedId}. Please ensure you have shared the spreadsheet with this email and granted "Editor" access.`);
+    }
     console.log(`Spreadsheet "${doc.title}" loaded.`);
 
     let sheet = doc.sheetsByTitle['Orders'];
@@ -122,7 +132,7 @@ export const syncOrderToSheet = async (order: any) => {
 
     const itemsSummary = order.items.map((item: any) => `${item.name} (x${item.quantity})`).join(', ');
 
-    await sheet.addRow({
+    const orderData = {
       'Order ID': order.id,
       'Date': new Date(order.createdAt).toLocaleString(),
       'Customer Name': order.customerName,
@@ -132,11 +142,24 @@ export const syncOrderToSheet = async (order: any) => {
       'Payment Status': order.paymentStatus,
       'Order Status': order.status,
       'Items': itemsSummary
-    });
+    };
 
-    console.log(`Order ${order.id} synced successfully.`);
+    const rows = await sheet.getRows();
+    const existingRow = rows.find(row => row.get('Order ID') === order.id);
+
+    if (existingRow) {
+      Object.assign(existingRow, orderData);
+      await existingRow.save();
+      console.log(`Order ${order.id} updated successfully in Google Sheet.`);
+    } else {
+      await sheet.addRow(orderData);
+      console.log(`Order ${order.id} added successfully to Google Sheet.`);
+    }
   } catch (error: any) {
     console.error('Error syncing order to Google Sheet:', error.message);
+    if (error.response) {
+      console.error('Full Google API Error Response:', JSON.stringify(error.response.data, null, 2));
+    }
     if (error.stack) console.error(error.stack);
   }
 };
@@ -220,7 +243,55 @@ export const syncProductToSheet = async (product: any) => {
     console.log(`Product ${product.id} synced successfully.`);
   } catch (error: any) {
     console.error('Error syncing product to Google Sheet:', error.message);
+    if (error.response) {
+      console.error('Full Google API Error Response:', JSON.stringify(error.response.data, null, 2));
+    }
     if (error.stack) console.error(error.stack);
+  }
+};
+
+export const deleteProductFromSheet = async (productId: string) => {
+  const config = await getGoogleSheetConfig();
+  if (!config || !config.enabled || !config.spreadsheetId || !config.clientEmail || !config.privateKey) {
+    return;
+  }
+
+  try {
+    console.log(`Deleting product ${productId} from Google Sheet...`);
+    const { JWT } = await import('google-auth-library');
+    const { GoogleSpreadsheet } = await import('google-spreadsheet');
+
+    const extractId = (id: string) => {
+      if (!id) return '';
+      const match = id.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      return match ? match[1] : id.trim().replace(/^["']|["']$/g, '');
+    };
+    const sanitizedId = extractId(config.spreadsheetId);
+    const formattedKey = getFormattedKey(config.privateKey);
+    
+    if (!formattedKey) return;
+
+    const serviceAccountAuth = new JWT({
+      email: config.clientEmail.trim(),
+      key: formattedKey,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+
+    const doc = new GoogleSpreadsheet(sanitizedId, serviceAccountAuth);
+    await doc.loadInfo();
+
+    const sheet = doc.sheetsByTitle['Products'];
+    if (!sheet) return;
+
+    const rows = await sheet.getRows();
+    const existingRow = rows.find(row => row.get('Product ID') === productId);
+
+    if (existingRow) {
+      await existingRow.delete();
+      console.log(`Product ${productId} deleted from Google Sheet.`);
+    }
+  } catch (error: any) {
+    console.error('Error deleting product from Google Sheet:', error.message);
   }
 };
 
@@ -248,6 +319,7 @@ export const getProductsFromSheet = async () => {
       return null;
     }
 
+    console.log(`Authenticating with Google Sheets API for product sync using email: ${config.clientEmail.trim()} for spreadsheet: ${sanitizedId}`);
     const serviceAccountAuth = new JWT({
       email: config.clientEmail.trim(),
       key: formattedKey,
@@ -319,6 +391,9 @@ export const getProductsFromSheet = async () => {
     }));
   } catch (error: any) {
     console.error('Error fetching products from Google Sheet:', error.message);
+    if (error.response) {
+      console.error('Full Google API Error Response:', JSON.stringify(error.response.data, null, 2));
+    }
     throw error; // Rethrow to catch in controller
   }
 };

@@ -98,6 +98,7 @@ function AnimatedRoutes() {
               <Route path="/admin/products" element={<AdminProducts />} />
               <Route path="/admin/products/new" element={<AdminProductForm />} />
               <Route path="/admin/products/edit/:id" element={<AdminProductForm />} />
+              <Route path="/admin/products/import" element={<AdminProductImporter />} />
               <Route path="/admin/orders" element={<AdminOrders />} />
               <Route path="/admin/transactions" element={<AdminTransactions />} />
               <Route path="/admin/reviews" element={<AdminReviews />} />
@@ -105,7 +106,7 @@ function AnimatedRoutes() {
               <Route path="/admin/refunds" element={<AdminRefunds />} />
               <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/admin/coupons" element={<AdminCoupons />} />
-              <Route path="/admin/settings/google-sheet" element={<AdminGoogleSheetSettings />} />
+              <Route path="/admin/google-sheet" element={<AdminGoogleSheetSettings />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
             </Route>
           </Route>

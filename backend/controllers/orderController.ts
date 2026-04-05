@@ -4,7 +4,24 @@ import { Order, OrderStatus, PaymentMethod } from '../models/types';
 import { syncOrderToSheet } from '../services/googleSheetService';
 
 export const createOrder = async (req: any, res: Response) => {
-  const { items, customerName, phone, address, paymentMethod, deliveryArea, discount, total, subtotal, deliveryCharge } = req.body;
+  const { 
+    items, 
+    customerName, 
+    phone, 
+    address, 
+    paymentMethod, 
+    deliveryArea, 
+    discount, 
+    total, 
+    subtotal, 
+    deliveryCharge,
+    payableAmount,
+    paymentType,
+    transactionId,
+    paymentScreenshot,
+    cardDetails,
+    customerNote
+  } = req.body;
 
   if (!items || items.length === 0 || !customerName || !phone || !address || !paymentMethod) {
     return res.status(400).json({ message: 'Missing required order fields' });
@@ -24,9 +41,16 @@ export const createOrder = async (req: any, res: Response) => {
       deliveryCharge,
       discount: discount || 0,
       total,
+      payableAmount: payableAmount || total,
       status: 'pending',
       paymentMethod,
-      paymentStatus: paymentMethod === 'cod' ? 'pending' : 'pending',
+      paymentType: paymentType || '100%',
+      paymentStatus: 'pending',
+      deliveryArea: deliveryArea || 'inside-dhaka',
+      transactionId: transactionId || '',
+      paymentScreenshot: paymentScreenshot || '',
+      cardDetails: cardDetails || null,
+      customerNote: customerNote || '',
       createdAt: new Date().toISOString(),
     };
 

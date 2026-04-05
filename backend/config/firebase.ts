@@ -1,6 +1,7 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
+import { getStorage } from 'firebase-admin/storage';
 import fs from 'fs';
 import path from 'path';
 
@@ -43,42 +44,73 @@ const initializeAdmin = () => {
     // 1. Check if we have service account credentials in the environment
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
       try {
-        let saString = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
+        const saString = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
         
-        // Handle cases where the string might be wrapped in extra single or double quotes from the UI/env
-        if ((saString.startsWith("'") && saString.endsWith("'")) || 
-            (saString.startsWith('"') && saString.endsWith('"'))) {
-          saString = saString.substring(1, saString.length - 1).trim();
-        }
+        // Helper to parse service account JSON robustly
+        const parseServiceAccount = (input: string): any => {
+          if (!input) return null;
+          let cleaned = input.trim();
+          
+          // Remove surrounding quotes
+          if ((cleaned.startsWith("'") && cleaned.endsWith("'")) || 
+              (cleaned.startsWith('"') && cleaned.endsWith('"'))) {
+            cleaned = cleaned.substring(1, cleaned.length - 1).trim();
+          }
 
-        // Try to find the actual JSON object if there's surrounding text
-        const firstBrace = saString.indexOf('{');
-        const lastBrace = saString.lastIndexOf('}');
+          // Try to find the JSON object
+          const firstBrace = cleaned.indexOf('{');
+          const lastBrace = cleaned.lastIndexOf('}');
+          if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+            cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+          } else if (!cleaned.startsWith('{')) {
+            cleaned = '{' + cleaned + '}';
+          }
+
+          try {
+            return JSON.parse(cleaned);
+          } catch (e) {
+            // Fix common issues
+            let fixed = cleaned;
+            fixed = fixed.replace(/([{,]\s*)([a-zA-Z0-9_]+)(\s*:)/g, '$1"$2"$3');
+            fixed = fixed.replace(/'/g, '"');
+            try {
+              return JSON.parse(fixed);
+            } catch (e2) {
+              // Manual extraction
+              const sa: any = {};
+              const fields = ['type', 'project_id', 'private_key_id', 'client_email', 'client_id', 'auth_uri', 'token_uri', 'auth_provider_x509_cert_url', 'client_x509_cert_url', 'universe_domain'];
+              for (const field of fields) {
+                const regex = new RegExp(`["']?${field}["']?\\s*[:=]\\s*["']?([^"'}]+)["']?`);
+                const match = cleaned.match(regex);
+                if (match) {
+                  let val = match[1].trim();
+                  if (val.endsWith(',') || val.endsWith('}')) val = val.substring(0, val.length - 1).trim();
+                  if (val.endsWith('"') || val.endsWith("'")) val = val.substring(0, val.length - 1).trim();
+                  sa[field] = val;
+                }
+              }
+              const pkMatch = cleaned.match(/["']?private_key["']?\s*[:=]\s*["']?([^"']+)["']?/);
+              if (pkMatch) {
+                sa.private_key = pkMatch[1].replace(/\\n/g, '\n');
+              }
+              return (sa.project_id && sa.private_key) ? sa : null;
+            }
+          }
+        };
+
+        const serviceAccount = parseServiceAccount(saString);
         
-        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-          saString = saString.substring(firstBrace, lastBrace + 1);
-        }
-
-        // Fix common JSON issues (missing quotes around keys, etc.)
-        try {
-          const serviceAccount = JSON.parse(saString);
+        if (serviceAccount && serviceAccount.project_id && serviceAccount.private_key) {
           console.log('Initializing with FIREBASE_SERVICE_ACCOUNT env var for project:', serviceAccount.project_id);
           return initializeApp({
             credential: cert(serviceAccount),
             projectId: serviceAccount.project_id
           });
-        } catch (jsonError) {
-          console.warn('Standard JSON parse failed, attempting to fix formatting...');
-          let fixedSa = saString.replace(/([{,]\s*)([a-zA-Z0-9_]+)(\s*:)/g, '$1"$2"$3');
-          fixedSa = fixedSa.replace(/'/g, '"');
-          const serviceAccount = JSON.parse(fixedSa);
-          return initializeApp({
-            credential: cert(serviceAccount),
-            projectId: serviceAccount.project_id
-          });
+        } else {
+          console.warn('FIREBASE_SERVICE_ACCOUNT found but could not be parsed into a valid service account object.');
         }
       } catch (e) {
-        console.error('CRITICAL: Failed to parse FIREBASE_SERVICE_ACCOUNT:', e);
+        console.error('CRITICAL: Failed to process FIREBASE_SERVICE_ACCOUNT:', e);
       }
     }
     
@@ -120,6 +152,7 @@ console.log('Firestore Database ID to use:', dbId || '(default)');
 
 let dbInstance: any = null;
 let authInstance: any = null;
+let storageInstance: any = null;
 
 if (adminApp) {
   try {
@@ -137,13 +170,15 @@ if (adminApp) {
       dbInstance = getFirestore(adminApp);
     }
     authInstance = getAuth(adminApp);
-    console.log('Firestore and Auth instances initialized successfully');
+    storageInstance = getStorage(adminApp);
+    console.log('Firestore, Auth, and Storage instances initialized successfully');
   } catch (error: any) {
-    console.error('Failed to initialize Firestore/Auth:', error.message);
+    console.error('Failed to initialize Firestore/Auth/Storage:', error.message);
     try {
       // Final fallback to default database
       dbInstance = getFirestore(adminApp);
       authInstance = getAuth(adminApp);
+      storageInstance = getStorage(adminApp);
     } catch (f) {
       console.error('Final fallback failed:', f);
     }
@@ -229,6 +264,14 @@ export const getAuthInstance = () => {
   return authInstance;
 };
 
+export const getStorageInstance = () => {
+  if (!storageInstance) {
+    throw new Error('Firebase Storage is not initialized. Check server logs for Firebase Admin errors.');
+  }
+  return storageInstance;
+};
+
 // Keep these for backward compatibility but they might be null if init failed
 export const db = dbInstance;
 export const auth = authInstance;
+export const storage = storageInstance;

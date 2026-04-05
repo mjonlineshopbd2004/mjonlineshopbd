@@ -1,10 +1,26 @@
 import { Request, Response } from 'express';
 import { getDb } from '../config/firebase';
 import { Product } from '../models/types';
-import { syncProductToSheet } from '../services/googleSheetService';
+import { syncProductToSheet, deleteProductFromSheet } from '../services/googleSheetService';
 
 export const createProduct = async (req: Request, res: Response) => {
-  const { name, description, price, discountPrice, category, images, stock } = req.body;
+  const { 
+    name, 
+    description, 
+    price, 
+    discountPrice, 
+    category, 
+    images, 
+    stock,
+    videoUrl,
+    sourceUrl,
+    sizes,
+    colors,
+    colorVariants,
+    featured,
+    trending,
+    specifications
+  } = req.body;
 
   if (!name || !price || !category || !stock) {
     return res.status(400).json({ message: 'Name, price, category, and stock are required' });
@@ -15,14 +31,22 @@ export const createProduct = async (req: Request, res: Response) => {
     const newProduct: Product = {
       id: db.collection('products').doc().id,
       name,
-      description,
-      price,
-      discountPrice,
+      description: description || '',
+      price: Number(price),
+      discountPrice: discountPrice !== undefined ? Number(discountPrice) : null,
       category,
       images: images || [],
-      stock,
-      rating: 0,
+      videoUrl: videoUrl || '',
+      sourceUrl: sourceUrl || '',
+      stock: Number(stock),
+      rating: 5,
       reviewsCount: 0,
+      sizes: sizes || [],
+      colors: colors || [],
+      colorVariants: colorVariants || [],
+      featured: !!featured,
+      trending: !!trending,
+      specifications: specifications || [],
       createdAt: new Date().toISOString(),
     };
 
@@ -33,6 +57,7 @@ export const createProduct = async (req: Request, res: Response) => {
     
     res.status(201).json(newProduct);
   } catch (error) {
+    console.error('Create product error:', error);
     res.status(500).json({ message: 'Server error creating product' });
   }
 };
@@ -105,15 +130,21 @@ export const updateProduct = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    await productRef.update(req.body);
+    const data = {
+      ...req.body,
+      updatedAt: new Date().toISOString()
+    };
+
+    await productRef.update(data);
     const updatedDoc = await productRef.get();
-    const updatedProduct = { id: updatedDoc.id, ...updatedDoc.data() };
+    const updatedProduct = { id: updatedDoc.id, ...updatedDoc.data() } as Product;
     
     // Sync to Google Sheet
     await syncProductToSheet(updatedProduct);
     
     res.json(updatedProduct);
   } catch (error) {
+    console.error('Update product error:', error);
     res.status(500).json({ message: 'Server error updating product' });
   }
 };
@@ -121,9 +152,15 @@ export const updateProduct = async (req: Request, res: Response) => {
 export const deleteProduct = async (req: Request, res: Response) => {
   try {
     const db = getDb();
-    await db.collection('products').doc(req.params.id).delete();
+    const productId = req.params.id;
+    await db.collection('products').doc(productId).delete();
+    
+    // Sync to Google Sheet
+    await deleteProductFromSheet(productId);
+    
     res.json({ message: 'Product deleted successfully' });
   } catch (error) {
+    console.error('Delete product error:', error);
     res.status(500).json({ message: 'Server error deleting product' });
   }
 };

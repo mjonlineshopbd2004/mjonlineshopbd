@@ -3,7 +3,7 @@ import { collection, query, getDocs, deleteDoc, doc, orderBy, updateDoc } from '
 import { db } from '../lib/firebase';
 import { Product } from '../types';
 import { formatPrice, cn, getProxyUrl } from '../lib/utils';
-import { Plus, Search, Edit2, Trash2, Package, ChevronRight, Filter, RefreshCw, Loader2 } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Package, ChevronRight, Filter, RefreshCw, Loader2, Globe } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -39,7 +39,21 @@ export default function AdminProducts() {
   const handleDelete = async (id: string) => {
     try {
       console.log("Starting deletion for ID:", id);
-      await deleteDoc(doc(db, 'products', id));
+      const idToken = await user?.getIdToken();
+      if (!idToken) throw new Error('Not authenticated');
+
+      const response = await fetch(`/api/products/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete product');
+      }
+
       setProducts(prev => prev.filter(p => p.id !== id));
       toast.success('Product deleted successfully');
       setDeleteConfirmId(null);
@@ -113,13 +127,22 @@ export default function AdminProducts() {
           <h1 className="text-3xl font-bold tracking-tight mb-2 text-white">Inventory</h1>
           <p className="text-gray-400 font-bold">Manage your products and stock levels</p>
         </div>
-        <Link
-          to="/admin/products/new"
-          className="bg-primary-dark hover:bg-primary text-white px-8 py-4 rounded-xl font-bold transition-all shadow-lg shadow-primary-dark/20 flex items-center gap-2"
-        >
-          <Plus className="h-5 w-5" />
-          <span>Add New Product</span>
-        </Link>
+        <div className="flex flex-wrap gap-4">
+          <Link
+            to="/admin/products/import"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-xl font-bold transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-2"
+          >
+            <Globe className="h-5 w-5" />
+            <span>Magic Importer</span>
+          </Link>
+          <Link
+            to="/admin/products/new"
+            className="bg-primary-dark hover:bg-primary text-white px-8 py-4 rounded-xl font-bold transition-all shadow-lg shadow-primary-dark/20 flex items-center gap-2"
+          >
+            <Plus className="h-5 w-5" />
+            <span>Add New Product</span>
+          </Link>
+        </div>
       </div>
 
       {/* Filters & Search */}

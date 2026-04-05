@@ -8,6 +8,7 @@ import { PAYMENT_METHODS } from '../constants';
 import { collection, addDoc } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { toast } from 'sonner';
+import axios from 'axios';
 import { ArrowLeft, CheckCircle2, CreditCard, Upload, Image as ImageIcon, Landmark, Phone, ArrowRight, Loader2, Calendar } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { uploadFile } from '../lib/upload';
@@ -181,12 +182,19 @@ export default function Payment() {
       };
 
       try {
-        const docRef = await addDoc(collection(db, 'orders'), orderData);
+        const token = await auth.currentUser?.getIdToken();
+        const response = await axios.post('/api/orders', orderData, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        
         clearCart();
-        navigate(`/order-confirmation/${docRef.id}`);
+        navigate(`/order-confirmation/${response.data.id}`);
         toast.success('Order placed successfully!');
-      } catch (error) {
-        handleFirestoreError(error, OperationType.CREATE, 'orders');
+      } catch (error: any) {
+        console.error('Order creation error:', error);
+        toast.error(error.response?.data?.message || 'Failed to place order. Please try again.');
       }
     } catch (error) {
       console.error("Error placing order:", error);
@@ -200,38 +208,40 @@ export default function Payment() {
     settings.enableBkash && { 
       id: 'bkash', 
       name: 'bKash', 
-      icon: 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways@master/logos/bkash.png' 
+      icon: settings.bkashLogo || 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways@master/logos/bkash.png' 
     },
     settings.enableNagad && { 
       id: 'nagad', 
       name: 'Nagad', 
-      icon: 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways@master/logos/nagad.png' 
+      icon: settings.nagadLogo || 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways@master/logos/nagad.png' 
     },
     settings.enableRocket && { 
       id: 'rocket', 
       name: 'Rocket', 
-      icon: 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways@master/logos/rocket.png' 
+      icon: settings.rocketLogo || 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways@master/logos/rocket.png' 
     },
-    { id: 'upay', name: 'Upay', icon: 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways@master/logos/upay.png' },
+    settings.enableUpay && { 
+      id: 'upay', 
+      name: 'Upay', 
+      icon: settings.upayLogo || 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways@master/logos/upay.png' 
+    },
   ].filter(Boolean) as { id: string, name: string, icon: string }[];
 
   const cardMethods = [
-    { 
+    settings.enableVisa && { 
       id: 'visa', 
       name: 'Visa', 
-      icon: 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways@master/logos/visa.png' 
+      icon: settings.visaLogo || 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways@master/logos/visa.png' 
     },
-    { 
+    settings.enableMastercard && { 
       id: 'mastercard', 
       name: 'MasterCard', 
-      icon: 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways@master/logos/mastercard.png' 
+      icon: settings.mastercardLogo || 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways@master/logos/mastercard.png' 
     },
-    settings.enableBankTransfer && { id: 'bank', name: 'Bank Transfer', icon: '🏦' },
+    settings.enableBankTransfer && { id: 'bank', name: 'Bank Transfer', icon: settings.bankLogo || '🏦' },
   ].filter(Boolean) as { id: string, name: string, icon: string }[];
 
-  const specificBanks = [
-    { id: 'bank', name: settings.bankName, icon: '🏦', accountName: settings.bankAccountName, accountNumber: settings.bankAccountNumber, branchName: '' },
-  ];
+  const specificBanks = settings.banks || [];
 
   return (
     <div className="min-h-screen bg-[#0f3d3e] py-12 px-4 flex items-center justify-center font-sans">
@@ -366,11 +376,15 @@ export default function Payment() {
                               : "border-gray-100 bg-white hover:border-purple-200"
                           )}
                         >
-                          <img 
-                            src={bank.icon} 
-                            alt={bank.name} 
-                            className="max-h-full max-w-full object-contain" 
-                          />
+                          {bank.logo ? (
+                            <img 
+                              src={bank.logo} 
+                              alt={bank.name} 
+                              className="max-h-full max-w-full object-contain" 
+                            />
+                          ) : (
+                            <span className="text-2xl">🏦</span>
+                          )}
                           {paymentMethod === bank.id && (
                             <div className="absolute -top-2 -right-2 bg-[#6d2077] text-white rounded-full p-0.5 shadow-sm">
                               <CheckCircle2 className="h-4 w-4" />
@@ -500,9 +514,25 @@ export default function Payment() {
                     </h3>
                     {(paymentMethod === 'bank' || specificBanks.some(b => b.id === paymentMethod)) ? (
                       <div className="text-sm text-gray-600 space-y-1 font-bold">
-                        <p>Bank: {settings.bankName}</p>
-                        <p>A/C Name: {settings.bankAccountName}</p>
-                        <p>A/C No: {settings.bankAccountNumber}</p>
+                        {(() => {
+                          const bank = specificBanks.find(b => b.id === paymentMethod) || specificBanks[0];
+                          if (bank) {
+                            return (
+                              <>
+                                <p>Bank: {bank.name}</p>
+                                <p>A/C Name: {bank.accountName}</p>
+                                <p>A/C No: {bank.accountNumber}</p>
+                              </>
+                            );
+                          }
+                          return (
+                            <>
+                              <p>Bank: {settings.bankName}</p>
+                              <p>A/C Name: {settings.bankAccountName}</p>
+                              <p>A/C No: {settings.bankAccountNumber}</p>
+                            </>
+                          );
+                        })()}
                       </div>
                     ) : (
                       <p className="text-sm text-gray-600 font-bold">
@@ -514,6 +544,7 @@ export default function Payment() {
                             if (paymentMethod === 'bkash') number = settings.bkashNumber;
                             else if (paymentMethod === 'nagad') number = settings.nagadNumber;
                             else if (paymentMethod === 'rocket') number = settings.rocketNumber;
+                            else if (paymentMethod === 'upay') number = settings.upayNumber;
                             else number = settings.paymentNumber;
                           }
                           

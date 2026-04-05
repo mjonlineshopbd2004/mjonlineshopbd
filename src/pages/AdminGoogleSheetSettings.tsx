@@ -64,7 +64,8 @@ const AdminGoogleSheetSettings: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
+          'Authorization': `Bearer ${idToken}`,
+          'Accept': 'application/json'
         },
         body: JSON.stringify(settings)
       });
@@ -110,7 +111,8 @@ const AdminGoogleSheetSettings: React.FC = () => {
       const response = await fetch('/api/sync-products', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${idToken}`
+          'Authorization': `Bearer ${idToken}`,
+          'Accept': 'application/json'
         }
       });
 
@@ -148,7 +150,8 @@ const AdminGoogleSheetSettings: React.FC = () => {
       const idToken = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/admin/test-firebase', {
         headers: {
-          'Authorization': `Bearer ${idToken}`
+          'Authorization': `Bearer ${idToken}`,
+          'Accept': 'application/json'
         }
       });
       const data = await response.json();
@@ -169,7 +172,8 @@ const AdminGoogleSheetSettings: React.FC = () => {
       const idToken = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/admin/test-drive', {
         headers: {
-          'Authorization': `Bearer ${idToken}`
+          'Authorization': `Bearer ${idToken}`,
+          'Accept': 'application/json'
         }
       });
       const data = await response.json();
@@ -208,6 +212,13 @@ const AdminGoogleSheetSettings: React.FC = () => {
     } catch (err) {
       // Not a valid JSON, let it paste normally
     }
+  };
+
+  const handleSpreadsheetIdChange = (value: string) => {
+    // Extract ID from URL if a full URL is pasted
+    const match = value.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    const extractedId = match ? match[1] : value.trim().replace(/^["']|["']$/g, '');
+    setSettings({ ...settings, spreadsheetId: extractedId });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -300,9 +311,9 @@ const AdminGoogleSheetSettings: React.FC = () => {
                   "w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent",
                   settings.spreadsheetId && settings.spreadsheetId.length < 40 ? "border-orange-300 bg-orange-50" : "border-gray-300"
                 )}
-                placeholder="e.g. 1aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+                placeholder="Spreadsheet ID or full URL"
                 value={settings.spreadsheetId || ''}
-                onChange={(e) => setSettings({ ...settings, spreadsheetId: e.target.value })}
+                onChange={(e) => handleSpreadsheetIdChange(e.target.value)}
               />
               {settings.spreadsheetId && settings.spreadsheetId.length < 40 && (
                 <p className="mt-1 text-xs text-orange-600 font-medium flex items-center gap-1">

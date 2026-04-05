@@ -63,7 +63,8 @@ export const uploadFile = async (file: File, idToken: string): Promise<string | 
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${idToken}`,
-        'X-Requested-With': 'XMLHttpRequest'
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json'
       },
       body: formData,
     });
@@ -119,7 +120,8 @@ export const uploadMultipleFiles = async (files: FileList | File[], idToken: str
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${idToken}`,
-        'X-Requested-With': 'XMLHttpRequest'
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json'
       },
       body: formData,
     });

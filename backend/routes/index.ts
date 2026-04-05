@@ -102,7 +102,11 @@ router.get('/admin/test-firebase', authenticate, authorize(['admin']), async (re
 router.get('/admin/test-drive', authenticate, authorize(['admin']), async (req, res) => {
   try {
     const { googleDriveService } = await import('../services/googleDriveService');
+    const { ensureDriveConfigured } = await import('../controllers/uploadController');
     const { auth, db } = await import('../config/firebase');
+    
+    // Force refresh configuration from Firestore before testing
+    await ensureDriveConfigured(true);
     
     const isConfigured = googleDriveService.isConfigured();
     

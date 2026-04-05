@@ -33,16 +33,13 @@ interface MobileBankingDetails {
   logo: string;
 }
 
-interface SiteSettings {
+export interface SiteSettings {
   storeName: string;
   shopTagline: string;
   logoUrl: string;
   phone: string;
   whatsappNumber: string;
   paymentNumber: string;
-  bkashNumber: string;
-  nagadNumber: string;
-  rocketNumber: string;
   email: string;
   address: string;
   facebook: string;
@@ -57,7 +54,21 @@ interface SiteSettings {
   enableBkash: boolean;
   enableNagad: boolean;
   enableRocket: boolean;
+  enableUpay: boolean;
   enableBankTransfer: boolean;
+  enableVisa: boolean;
+  enableMastercard: boolean;
+  bkashNumber: string;
+  nagadNumber: string;
+  rocketNumber: string;
+  upayNumber: string;
+  bkashLogo: string;
+  nagadLogo: string;
+  rocketLogo: string;
+  upayLogo: string;
+  bankLogo: string;
+  visaLogo: string;
+  mastercardLogo: string;
   bankName: string;
   bankAccountNumber: string;
   bankAccountName: string;
@@ -84,9 +95,6 @@ export const defaultSettings: SiteSettings = {
   phone: '01610880813',
   whatsappNumber: '01610880813',
   paymentNumber: '01610880813',
-  bkashNumber: '01610880813',
-  nagadNumber: '01610880813',
-  rocketNumber: '01610880813',
   email: 'mjonlineshopbd@gmail.com',
   address: 'Dhaka, Bangladesh',
   facebook: '',
@@ -101,7 +109,21 @@ export const defaultSettings: SiteSettings = {
   enableBkash: true,
   enableNagad: true,
   enableRocket: true,
+  enableUpay: true,
   enableBankTransfer: true,
+  enableVisa: true,
+  enableMastercard: true,
+  bkashNumber: '01610880813',
+  nagadNumber: '01610880813',
+  rocketNumber: '01610880813',
+  upayNumber: '01610880813',
+  bkashLogo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Bkash_logo.svg/1200px-Bkash_logo.svg.png',
+  nagadLogo: 'https://download.logo.wine/logo/Nagad/Nagad-Logo.wine.png',
+  rocketLogo: 'https://download.logo.wine/logo/Rocket_(mobile_banking_service)/Rocket_(mobile_banking_service)-Logo.wine.png',
+  upayLogo: 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways@master/logos/upay.png',
+  bankLogo: '🏦',
+  visaLogo: 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways@master/logos/visa.png',
+  mastercardLogo: 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways@master/logos/mastercard.png',
   bankName: 'Nexus Bank',
   bankAccountNumber: '123.456.7890',
   bankAccountName: 'MJ Online Shop',

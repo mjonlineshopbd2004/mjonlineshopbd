@@ -17,7 +17,7 @@ export interface Product {
   name: string;
   description: string;
   price: number;
-  discountPrice?: number;
+  discountPrice?: number | null;
   category: string;
   images: string[];
   videoUrl?: string;
@@ -27,11 +27,16 @@ export interface Product {
   reviewsCount: number;
   featured?: boolean;
   trending?: boolean;
+  sizes?: string[];
+  colors?: string[];
+  colorVariants?: { name: string; image: string }[];
+  specifications?: { key: string; value: string }[];
   createdAt: string;
+  updatedAt?: string;
 }
 
 export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-export type PaymentMethod = 'bkash' | 'nagad' | 'cod';
+export type PaymentMethod = 'bkash' | 'nagad' | 'rocket' | 'upay' | 'visa' | 'mastercard' | 'bank' | 'cod';
 
 export interface Order {
   id: string;
@@ -45,10 +50,20 @@ export interface Order {
   deliveryCharge: number;
   discount: number;
   total: number;
+  payableAmount: number;
   status: OrderStatus;
-  paymentMethod: PaymentMethod;
+  paymentMethod: string;
+  paymentType: string;
   paymentStatus: 'pending' | 'paid' | 'verified';
+  deliveryArea: string;
   transactionId?: string;
+  paymentScreenshot?: string;
+  cardDetails?: {
+    holderName: string;
+    cardNumber: string;
+    expiry: string;
+  } | null;
+  customerNote?: string;
   createdAt: string;
 }
 

@@ -4,7 +4,7 @@ import { doc, getDoc, addDoc, collection, updateDoc, getDocFromServer } from 'fi
 import { db } from '../lib/firebase';
 import { Product } from '../types';
 import { toast } from 'sonner';
-import { ArrowLeft, Save, Image as ImageIcon, Plus, X, Loader2, Upload, Video, Trash2, DollarSign, Settings } from 'lucide-react';
+import { ArrowLeft, Save, Image as ImageIcon, Plus, X, Loader2, Upload, Video, Trash2, DollarSign, Settings, Globe, Search } from 'lucide-react';
 import { cn, getProxyUrl } from '../lib/utils';
 import { uploadFile, uploadMultipleFiles } from '../lib/upload';
 import { useAuth } from '../contexts/AuthContext';
@@ -159,7 +159,8 @@ export default function AdminProductForm() {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${idToken}`,
-          'X-Requested-With': 'XMLHttpRequest'
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({ url: sourceUrl })
       });
@@ -181,6 +182,12 @@ export default function AdminProductForm() {
         throw new Error(data.message || 'Failed to fetch product data');
       }
 
+      if (data.error === 'GEMINI_API_KEY_INVALID') {
+        toast.warning('AI is partially working. Please set a valid GEMINI_API_KEY for full details.', {
+          duration: 10000
+        });
+      }
+
       setFormData(prev => ({
         ...prev,
         name: data.name || prev.name,
@@ -191,6 +198,7 @@ export default function AdminProductForm() {
         sizes: data.sizes && data.sizes.length > 0 ? data.sizes : prev.sizes,
         colors: data.colors && data.colors.length > 0 ? data.colors : prev.colors,
         category: data.category || prev.category,
+        videoUrl: data.videoUrl || prev.videoUrl,
         specifications: data.specifications && data.specifications.length > 0 ? data.specifications : prev.specifications
       }));
 
@@ -312,26 +320,54 @@ export default function AdminProductForm() {
 
     setSubmitting(true);
     try {
+      const idToken = await user?.getIdToken();
+      if (!idToken) throw new Error('Not authenticated');
+
       const { id: _, ...restData } = formData;
       const data = {
         ...restData,
         price: Number(formData.price) || 0,
         discountPrice: (formData.discountPrice !== undefined && formData.discountPrice !== null && formData.discountPrice !== '') ? Number(formData.discountPrice) : null,
         stock: Number(formData.stock) || 0,
-        updatedAt: new Date().toISOString(),
       };
 
       if (isEditing && id) {
-        await updateDoc(doc(db, 'products', id), data as any);
+        const response = await fetch(`/api/products/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
+          body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to update product');
+        }
+        
         toast.success('Product updated successfully');
       } else {
-        await addDoc(collection(db, 'products'), data);
+        const response = await fetch('/api/products', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
+          body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to create product');
+        }
+
         toast.success('Product added successfully');
       }
       navigate('/admin/products');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving product:", error);
-      toast.error('Failed to save product');
+      toast.error(error.message || 'Failed to save product');
     } finally {
       setSubmitting(false);
     }
@@ -371,6 +407,42 @@ export default function AdminProductForm() {
           <span>{isEditing ? 'Update Product' : 'Save Product'}</span>
         </button>
       </div>
+
+      {/* Magic Import Section */}
+      {!isEditing && (
+        <div className="bg-gradient-to-br from-primary/20 to-emerald-500/20 border border-primary/20 p-8 rounded-[2rem] space-y-6 shadow-2xl shadow-primary/10">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-black flex items-center gap-3 text-white">
+              <Globe className="h-6 w-6 text-primary" />
+              Magic Import from URL
+            </h2>
+            <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">AI Powered</span>
+          </div>
+          <p className="text-gray-400 font-bold text-sm">
+            Paste a product URL from any website (Amazon, Daraz, 1688, etc.) and we'll automatically fill in the details for you.
+          </p>
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder="https://example.com/product/..."
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-6 py-4 focus:outline-none focus:border-primary transition-all font-bold text-white"
+                value={sourceUrl}
+                onChange={(e) => setSourceUrl(e.target.value)}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleFetchFromUrl}
+              disabled={fetching || !sourceUrl}
+              className="bg-primary hover:bg-primary-dark text-white px-8 py-4 rounded-xl font-black transition-all flex items-center justify-center gap-2 disabled:opacity-50 min-w-[180px]"
+            >
+              {fetching ? <Loader2 className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
+              <span>Fetch Details</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Info */}

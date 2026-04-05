@@ -91,7 +91,8 @@ export default function AdminProductImporter() {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${idToken}`,
-          'X-Requested-With': 'XMLHttpRequest'
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({ url })
       });
@@ -331,7 +332,7 @@ export default function AdminProductImporter() {
                   <div className="flex flex-wrap gap-4">
                     <div className="bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl flex items-center gap-2">
                       <DollarSign className="h-4 w-4 text-emerald-500" />
-                      <span className="text-xl font-black text-emerald-500">{formatPrice(product.price)}</span>
+                      <span className="text-xl font-black text-emerald-500">{product.price > 0 ? formatPrice(product.price) : 'Price Not Found'}</span>
                     </div>
                     {product.originalPrice && (
                       <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2">
@@ -341,7 +342,7 @@ export default function AdminProductImporter() {
                     )}
                     <div className="bg-blue-500/10 border border-blue-500/20 px-4 py-2 rounded-xl flex items-center gap-2">
                       <Layers className="h-4 w-4 text-blue-500" />
-                      <span className="text-sm font-bold text-blue-500">{product.category}</span>
+                      <span className="text-sm font-bold text-blue-500">{product.category || 'Imported'}</span>
                     </div>
                   </div>
 
@@ -376,7 +377,9 @@ export default function AdminProductImporter() {
                   <div className="space-y-2">
                     <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Description</h3>
                     <div className="bg-white/5 p-4 rounded-2xl border border-white/5 max-h-[200px] overflow-y-auto custom-scrollbar">
-                      <p className="text-sm text-gray-300 leading-relaxed font-medium">{product.description}</p>
+                      <p className="text-sm text-gray-300 leading-relaxed font-medium">
+                        {product.description || 'No description found for this product. You can add one after importing.'}
+                      </p>
                     </div>
                   </div>
                 </div>

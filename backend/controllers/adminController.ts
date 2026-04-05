@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { google } from 'googleapis';
 import fs from 'fs';
 import path from 'path';
+import { googleDriveService } from '../services/googleDriveService';
+import { ensureDriveConfigured } from './uploadController';
 import { getDb } from '../config/firebase';
 import { UserProfile, Order, Product } from '../models/types';
 import { getProductsFromSheet } from '../services/googleSheetService';
@@ -401,83 +403,40 @@ export const uploadToDrive = async (req: any, res: Response) => {
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    const settingsDoc = await getDb().collection('settings').doc('googleSheet').get();
-    if (!settingsDoc.exists) {
-      return res.status(400).json({ message: 'Google Drive settings not found' });
-    }
+    await ensureDriveConfigured();
 
-    const { clientEmail, privateKey, driveFolderId } = settingsDoc.data() as GoogleSheetSettings;
-
-    if (!clientEmail || !privateKey || !driveFolderId) {
+    if (!googleDriveService.isConfigured()) {
       return res.status(400).json({ message: 'Google Drive is not fully configured. Please provide Client Email, Private Key, and Folder ID in settings.' });
     }
 
-    const getFormattedKey = (key: string) => {
-      if (!key) return '';
-      let cleaned = key.trim();
-      try {
-        const parsed = JSON.parse(cleaned);
-        if (parsed.private_key) cleaned = parsed.private_key;
-      } catch (e) {}
-      cleaned = cleaned.replace(/\\n/g, '\n');
-      const base64 = cleaned.replace(/-----BEGIN [^-]+-----/g, '').replace(/-----END [^-]+-----/g, '').replace(/\s/g, '');
-      const wrappedBase64 = base64.match(/.{1,64}/g)?.join('\n') || base64;
-      return `-----BEGIN PRIVATE KEY-----\n${wrappedBase64}\n-----END PRIVATE KEY-----\n`;
-    };
+    const driveUrl = await googleDriveService.uploadFile(
+      req.file.path,
+      req.file.filename,
+      req.file.mimetype
+    );
 
-    const formattedKey = getFormattedKey(privateKey);
-
-    const { JWT } = await import('google-auth-library');
-    const auth = new JWT({
-      email: clientEmail,
-      key: formattedKey,
-      scopes: ['https://www.googleapis.com/auth/drive.file'],
-    });
-
-    const drive = google.drive({ version: 'v3', auth });
-
-    const fileMetadata = {
-      name: `${Date.now()}-${req.file.originalname}`,
-      parents: [driveFolderId],
-    };
-
-    const media = {
-      mimeType: req.file.mimetype,
-      body: fs.createReadStream(req.file.path),
-    };
-
-    const response = await drive.files.create({
-      requestBody: fileMetadata,
-      media: media,
-      fields: 'id, webViewLink, webContentLink',
-    });
-
-    // Make the file public so it can be viewed on the website
-    await drive.permissions.create({
-      fileId: response.data.id!,
-      requestBody: {
-        role: 'reader',
-        type: 'anyone',
-      },
-    });
+    if (!driveUrl) {
+      throw new Error('Failed to get upload URL from Google Drive');
+    }
 
     // Clean up local file
-    fs.unlinkSync(req.file.path);
-
-    // Construct a direct link that works for <img> and <video> tags
-    const fileId = response.data.id;
-    const directLink = `https://drive.google.com/uc?export=view&id=${fileId}`;
+    if (fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
 
     res.json({ 
-      id: fileId,
-      url: directLink,
-      webViewLink: response.data.webViewLink
+      url: driveUrl
     });
   } catch (error: any) {
     console.error('Drive upload error:', error);
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
+    
+    if (error.message?.includes('Google Drive Folder not found') || error.message?.includes('Access Denied')) {
+      return res.status(400).json({ message: error.message });
+    }
+    
     res.status(500).json({ message: error.message || 'Failed to upload to Google Drive' });
   }
 };

@@ -2,18 +2,19 @@ import { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { googleDriveService } from '../services/googleDriveService';
+import { firebaseStorageService } from '../services/firebaseStorageService';
 import { getDb } from '../config/firebase';
 
 let lastConfigFetch = 0;
-const CONFIG_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CONFIG_CACHE_TTL = 30 * 1000; // 30 seconds (reduced from 5 mins for better responsiveness)
 
-const ensureDriveConfigured = async () => {
+export const ensureDriveConfigured = async (forceRefresh = false) => {
   try {
     const now = Date.now();
     const isAlreadyConfigured = googleDriveService.isConfigured();
     
     // If already configured and cache is fresh, skip entirely
-    if (isAlreadyConfigured && (now - lastConfigFetch < CONFIG_CACHE_TTL)) {
+    if (!forceRefresh && isAlreadyConfigured && (now - lastConfigFetch < CONFIG_CACHE_TTL)) {
       return;
     }
 
@@ -67,9 +68,27 @@ export const uploadFile = async (req: Request, res: Response) => {
     }
     console.log('File received:', req.file.originalname, 'Size:', req.file.size);
 
+    // 1. Try Firebase Storage first (Preferred)
+    try {
+      const firebaseUrl = await firebaseStorageService.uploadFile(
+        req.file.path,
+        req.file.originalname,
+        req.file.mimetype
+      );
+
+      if (firebaseUrl) {
+        if (fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+        return res.status(200).json({ url: firebaseUrl });
+      }
+    } catch (firebaseError) {
+      console.error('Firebase Storage upload failed, trying Google Drive:', firebaseError);
+    }
+
     await ensureDriveConfigured();
 
-    // If Google Drive is configured, upload to Drive
+    // 2. Fallback to Google Drive
     if (googleDriveService.isConfigured()) {
       try {
         const driveUrl = await googleDriveService.uploadFile(
@@ -87,17 +106,10 @@ export const uploadFile = async (req: Request, res: Response) => {
         }
       } catch (driveError: any) {
         console.error('Google Drive upload failed:', driveError);
-        // If it's a specific configuration error, report it to the user
-        if (driveError.message?.includes('Google Drive Folder not found')) {
-          return res.status(400).json({ 
-            message: driveError.message,
-            error: 'Google Drive Configuration Error'
-          });
-        }
       }
     }
 
-    // Fallback to local storage
+    // 3. Fallback to local storage (Last resort)
     const fileUrl = `/uploads/${req.file.filename}`;
     res.status(200).json({ url: fileUrl });
   } catch (error) {
@@ -116,39 +128,47 @@ export const uploadMultipleFiles = async (req: Request, res: Response) => {
     }
     console.log('Files received:', files.length, 'Total size:', files.reduce((acc, f) => acc + f.size, 0));
 
-    await ensureDriveConfigured();
-
     const fileUrls = [];
 
     for (const file of files) {
-      try {
-        if (googleDriveService.isConfigured()) {
-          const driveUrl = await googleDriveService.uploadFile(
-            file.path,
-            file.filename,
-            file.mimetype
-          );
+      let uploadedUrl = null;
 
-          if (driveUrl) {
-            if (fs.existsSync(file.path)) {
-              fs.unlinkSync(file.path);
-            }
-            fileUrls.push(driveUrl);
-            continue;
+      // 1. Try Firebase Storage
+      try {
+        uploadedUrl = await firebaseStorageService.uploadFile(
+          file.path,
+          file.originalname,
+          file.mimetype
+        );
+      } catch (firebaseError) {
+        console.error('Firebase Storage upload failed for file:', file.filename, firebaseError);
+      }
+
+      // 2. Try Google Drive if Firebase failed
+      if (!uploadedUrl) {
+        await ensureDriveConfigured();
+        if (googleDriveService.isConfigured()) {
+          try {
+            uploadedUrl = await googleDriveService.uploadFile(
+              file.path,
+              file.filename,
+              file.mimetype
+            );
+          } catch (driveError) {
+            console.error('Google Drive upload failed for file:', file.filename, driveError);
           }
         }
-      } catch (driveError: any) {
-        console.error('Google Drive upload failed for file:', file.filename, driveError);
-        // If it's a configuration error, we stop and report it
-        if (driveError.message?.includes('Google Drive Folder not found')) {
-          return res.status(400).json({ 
-            message: driveError.message,
-            error: 'Google Drive Configuration Error'
-          });
-        }
       }
-      
-      fileUrls.push(`/uploads/${file.filename}`);
+
+      if (uploadedUrl) {
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+        fileUrls.push(uploadedUrl);
+      } else {
+        // 3. Fallback to local
+        fileUrls.push(`/uploads/${file.filename}`);
+      }
     }
 
     res.status(200).json({ urls: fileUrls });
