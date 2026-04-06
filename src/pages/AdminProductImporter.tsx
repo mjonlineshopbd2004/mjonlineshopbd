@@ -30,6 +30,7 @@ interface ImportedProduct {
   images: string[];
   category: string;
   sourceUrl: string;
+  videoUrl?: string;
   sizes?: string[];
   colors?: string[];
   specifications?: { key: string; value: string }[];
@@ -42,6 +43,7 @@ export default function AdminProductImporter() {
   const [importing, setImporting] = useState(false);
   const [product, setProduct] = useState<ImportedProduct | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isZoomed, setIsZoomed] = useState(false);
   const [aiStatus, setAiStatus] = useState<'checking' | 'ready' | 'missing'>('checking');
 
   useEffect(() => {
@@ -115,8 +117,9 @@ export default function AdminProductImporter() {
 
       if (!response.ok) {
         if (response.status === 429) {
-          toast.error('AI Quota Exceeded. The free AI limit has been reached. Please try again in a few minutes or use a different URL.', {
-            duration: 6000
+          const msg = data.message || 'AI Quota Exceeded. The free AI limit (20 requests per day) has been reached. Please try again tomorrow or use a different API key.';
+          toast.error(msg, {
+            duration: 8000
           });
           setLoading(false);
           return;
@@ -149,6 +152,7 @@ export default function AdminProductImporter() {
         description: data.description,
         images: data.images,
         category: data.category,
+        videoUrl: data.videoUrl,
         sourceUrl: url,
         sizes: data.sizes,
         colors: data.colors,
@@ -186,6 +190,7 @@ export default function AdminProductImporter() {
         discountPrice: null,
         description: product.description || '',
         images: product.images || [],
+        videoUrl: product.videoUrl || '',
         category: product.category || 'Imported',
         stock: 100,
         featured: false,
@@ -326,11 +331,19 @@ export default function AdminProductImporter() {
             >
               {/* Image Preview */}
               <div className="bg-white/5 border border-white/10 rounded-[2rem] p-6 space-y-4">
-                <div className="relative aspect-square rounded-2xl overflow-hidden bg-black/20 group">
-                  <img
+                <div 
+                  className="relative aspect-square rounded-2xl overflow-hidden bg-black/20 group cursor-zoom-in"
+                  onClick={() => setIsZoomed(!isZoomed)}
+                >
+                  <motion.img
+                    animate={{ scale: isZoomed ? 1.5 : 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     src={getProxyUrl(product.images[currentImageIndex])}
                     alt={product.title}
-                    className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+                    className={cn(
+                      "w-full h-full transition-all duration-500",
+                      isZoomed ? "object-contain" : "object-contain group-hover:scale-105"
+                    )}
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       if (!target.src.includes('picsum.photos')) {
@@ -340,10 +353,21 @@ export default function AdminProductImporter() {
                     }}
                   />
                   
-                  {product.images.length > 1 && (
+                  {isZoomed && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest text-white border border-white/20">
+                        Click to Zoom Out
+                      </div>
+                    </div>
+                  )}
+
+                  {product.images.length > 1 && !isZoomed && (
                     <div className="absolute inset-x-4 bottom-4 flex justify-between items-center">
                       <button
-                        onClick={() => setCurrentImageIndex(prev => (prev > 0 ? prev - 1 : product.images.length - 1))}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCurrentImageIndex(prev => (prev > 0 ? prev - 1 : product.images.length - 1));
+                        }}
                         className="p-2 bg-black/50 backdrop-blur-md rounded-full hover:bg-black/70 transition-all"
                       >
                         <ChevronLeft className="h-5 w-5" />
@@ -352,7 +376,10 @@ export default function AdminProductImporter() {
                         {currentImageIndex + 1} / {product.images.length}
                       </span>
                       <button
-                        onClick={() => setCurrentImageIndex(prev => (prev < product.images.length - 1 ? prev + 1 : 0))}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCurrentImageIndex(prev => (prev < product.images.length - 1 ? prev + 1 : 0));
+                        }}
                         className="p-2 bg-black/50 backdrop-blur-md rounded-full hover:bg-black/70 transition-all"
                       >
                         <ChevronRight className="h-5 w-5" />
@@ -405,7 +432,7 @@ export default function AdminProductImporter() {
                       <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Price (BDT)</label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                          <DollarSign className="h-4 w-4 text-emerald-500" />
+                          <span className="text-emerald-500 font-bold">৳</span>
                         </div>
                         <input
                           type="number"
@@ -415,6 +442,19 @@ export default function AdminProductImporter() {
                         />
                       </div>
                     </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Offer Price (Original)</label>
+                      <input
+                        type="text"
+                        value={product.originalPrice}
+                        onChange={(e) => updateProductField('originalPrice', e.target.value)}
+                        placeholder="e.g. ৳ 1,200"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-lg font-bold focus:outline-none focus:border-emerald-500 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Category</label>
                       <div className="relative">
@@ -429,6 +469,16 @@ export default function AdminProductImporter() {
                           placeholder="Category"
                         />
                       </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Video URL</label>
+                      <input
+                        type="text"
+                        value={product.videoUrl || ''}
+                        onChange={(e) => updateProductField('videoUrl', e.target.value)}
+                        placeholder="Paste product video URL (YouTube, MP4, etc.)"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-emerald-500 transition-all"
+                      />
                     </div>
                   </div>
 
@@ -486,6 +536,17 @@ export default function AdminProductImporter() {
                         ))}
                       </div>
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Video URL</h3>
+                    <input
+                      type="text"
+                      value={product.videoUrl || ''}
+                      onChange={(e) => updateProductField('videoUrl', e.target.value)}
+                      placeholder="Paste product video URL (YouTube, MP4, etc.)"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-emerald-500 transition-all"
+                    />
                   </div>
 
                   <div className="space-y-2">

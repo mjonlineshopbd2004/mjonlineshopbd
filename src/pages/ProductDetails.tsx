@@ -8,6 +8,7 @@ import { formatPrice, calculateDiscount, cn, getProxyUrl } from '../lib/utils';
 import { useCart } from '../contexts/CartContext';
 import { useWishlist } from '../contexts/WishlistContext';
 import { useAuth } from '../contexts/AuthContext';
+import { motion, AnimatePresence } from 'motion/react';
 import { Star, ShoppingCart, ShoppingBag, Heart, Truck, ShieldCheck, RefreshCw, ChevronRight, Check, ChevronLeft, Plus, Minus, MessageSquare, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import ProductCard from '../components/ProductCard';
@@ -23,6 +24,7 @@ export default function ProductDetails() {
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
+  const [isZoomed, setIsZoomed] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
@@ -239,11 +241,19 @@ export default function ProductDetails() {
       <div className="flex flex-col lg:flex-row gap-12 mb-24">
         {/* Image Gallery */}
         <div className="lg:w-[38%] space-y-4">
-          <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden bg-gray-50 border border-gray-100 group">
-            <img
+          <div 
+            className="relative aspect-[4/5] rounded-[2rem] overflow-hidden bg-gray-50 border border-gray-100 group cursor-zoom-in"
+            onClick={() => setIsZoomed(!isZoomed)}
+          >
+            <motion.img
+              animate={{ scale: isZoomed ? 1.5 : 1 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
               src={getProxyUrl(product.images[activeImage])}
               alt={product.name}
-              className="w-full h-full object-cover"
+              className={cn(
+                "w-full h-full transition-all duration-500",
+                isZoomed ? "object-contain" : "object-cover"
+              )}
               referrerPolicy="no-referrer"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
@@ -252,16 +262,29 @@ export default function ProductDetails() {
                 }
               }}
             />
-            {product.images.length > 1 && (
+            {isZoomed && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest text-white border border-white/20">
+                  Click to Zoom Out
+                </div>
+              </div>
+            )}
+            {product.images.length > 1 && !isZoomed && (
               <>
                 <button
-                  onClick={() => setActiveImage(prev => (prev === 0 ? product.images.length - 1 : prev - 1))}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveImage(prev => (prev === 0 ? product.images.length - 1 : prev - 1));
+                  }}
                   className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-md p-3 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <ChevronLeft className="h-6 w-6" />
                 </button>
                 <button
-                  onClick={() => setActiveImage(prev => (prev === product.images.length - 1 ? 0 : prev + 1))}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveImage(prev => (prev === product.images.length - 1 ? 0 : prev + 1));
+                  }}
                   className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-md p-3 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <ChevronRight className="h-6 w-6" />
