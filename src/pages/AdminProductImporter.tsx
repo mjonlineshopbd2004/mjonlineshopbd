@@ -186,10 +186,12 @@ export default function AdminProductImporter() {
         discountPrice: null,
         description: product.description || '',
         images: product.images || [],
-        category: product.category || '',
+        category: product.category || 'Imported',
         stock: 100,
-        isFeatured: false,
-        isTrending: false,
+        featured: false,
+        trending: false,
+        rating: 5,
+        reviewsCount: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         sourceUrl: product.sourceUrl,
@@ -208,6 +210,49 @@ export default function AdminProductImporter() {
     } finally {
       setImporting(false);
     }
+  };
+
+  const updateProductField = (field: keyof ImportedProduct, value: any) => {
+    if (!product) return;
+    setProduct({ ...product, [field]: value });
+  };
+
+  const addSize = () => {
+    if (!product) return;
+    const sizes = [...(product.sizes || []), ''];
+    updateProductField('sizes', sizes);
+  };
+
+  const removeSize = (index: number) => {
+    if (!product) return;
+    const sizes = (product.sizes || []).filter((_, i) => i !== index);
+    updateProductField('sizes', sizes);
+  };
+
+  const updateSize = (index: number, value: string) => {
+    if (!product) return;
+    const sizes = [...(product.sizes || [])];
+    sizes[index] = value;
+    updateProductField('sizes', sizes);
+  };
+
+  const addColor = () => {
+    if (!product) return;
+    const colors = [...(product.colors || []), ''];
+    updateProductField('colors', colors);
+  };
+
+  const removeColor = (index: number) => {
+    if (!product) return;
+    const colors = (product.colors || []).filter((_, i) => i !== index);
+    updateProductField('colors', colors);
+  };
+
+  const updateColor = (index: number, value: string) => {
+    if (!product) return;
+    const colors = [...(product.colors || [])];
+    colors[index] = value;
+    updateProductField('colors', colors);
   };
 
   return (
@@ -334,71 +379,123 @@ export default function AdminProductImporter() {
 
               {/* Details Preview */}
               <div className="bg-white/5 border border-white/10 rounded-[2rem] p-8 space-y-6 flex flex-col">
-                <div className="space-y-4 flex-1">
+                <div className="space-y-6 flex-1">
                   <div className="flex items-start justify-between gap-4">
-                    <h2 className="text-2xl font-bold tracking-tight leading-tight">{product.title}</h2>
+                    <div className="flex-1 space-y-2">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Product Title</label>
+                      <input
+                        type="text"
+                        value={product.title}
+                        onChange={(e) => updateProductField('title', e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-lg font-bold focus:outline-none focus:border-emerald-500 transition-all"
+                      />
+                    </div>
                     <a 
                       href={product.sourceUrl} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-gray-400 hover:text-white shrink-0"
+                      className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-gray-400 hover:text-white shrink-0 mt-6"
                     >
                       <ExternalLink className="h-5 w-5" />
                     </a>
                   </div>
 
-                  <div className="flex flex-wrap gap-4">
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-emerald-500" />
-                      <span className="text-xl font-black text-emerald-500">{product.price > 0 ? formatPrice(product.price) : 'Price Not Found'}</span>
-                    </div>
-                    {product.originalPrice && (
-                      <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2">
-                        <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Original:</span>
-                        <span className="text-sm font-bold text-gray-300">{product.originalPrice}</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Price (BDT)</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                          <DollarSign className="h-4 w-4 text-emerald-500" />
+                        </div>
+                        <input
+                          type="number"
+                          value={product.price}
+                          onChange={(e) => updateProductField('price', Number(e.target.value))}
+                          className="w-full bg-emerald-500/5 border border-emerald-500/20 rounded-xl py-3 pl-10 pr-4 text-xl font-black text-emerald-500 focus:outline-none focus:border-emerald-500 transition-all"
+                        />
                       </div>
-                    )}
-                    <div className="bg-blue-500/10 border border-blue-500/20 px-4 py-2 rounded-xl flex items-center gap-2">
-                      <Layers className="h-4 w-4 text-blue-500" />
-                      <span className="text-sm font-bold text-blue-500">{product.category || 'Imported'}</span>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Category</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                          <Layers className="h-4 w-4 text-blue-500" />
+                        </div>
+                        <input
+                          type="text"
+                          value={product.category}
+                          onChange={(e) => updateProductField('category', e.target.value)}
+                          className="w-full bg-blue-500/5 border border-blue-500/20 rounded-xl py-3 pl-10 pr-4 text-sm font-bold text-blue-500 focus:outline-none focus:border-blue-500 transition-all"
+                          placeholder="Category"
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  {/* Sizes & Colors Preview */}
-                  <div className="grid grid-cols-2 gap-4">
-                    {product.sizes && product.sizes.length > 0 && (
-                      <div className="space-y-2">
+                  {/* Sizes & Colors Edit */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
                         <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Sizes</h3>
-                        <div className="flex flex-wrap gap-1">
-                          {product.sizes.map(size => (
-                            <span key={size} className="px-2 py-1 bg-white/5 border border-white/10 rounded-md text-[10px] font-bold text-gray-400">
-                              {size}
-                            </span>
-                          ))}
-                        </div>
+                        <button onClick={addSize} className="p-1 bg-white/5 hover:bg-white/10 rounded-md text-emerald-500 transition-all">
+                          <Plus className="h-3 w-3" />
+                        </button>
                       </div>
-                    )}
-                    {product.colors && product.colors.length > 0 && (
-                      <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        {product.sizes?.map((size, idx) => (
+                          <div key={idx} className="relative group">
+                            <input
+                              type="text"
+                              value={size}
+                              onChange={(e) => updateSize(idx, e.target.value)}
+                              className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] font-bold text-center focus:outline-none focus:border-emerald-500"
+                            />
+                            <button 
+                              onClick={() => removeSize(idx)}
+                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="h-2 w-2" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
                         <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Colors</h3>
-                        <div className="flex flex-wrap gap-1">
-                          {product.colors.map(color => (
-                            <span key={color} className="px-2 py-1 bg-white/5 border border-white/10 rounded-md text-[10px] font-bold text-gray-400">
-                              {color}
-                            </span>
-                          ))}
-                        </div>
+                        <button onClick={addColor} className="p-1 bg-white/5 hover:bg-white/10 rounded-md text-emerald-500 transition-all">
+                          <Plus className="h-3 w-3" />
+                        </button>
                       </div>
-                    )}
+                      <div className="flex flex-wrap gap-2">
+                        {product.colors?.map((color, idx) => (
+                          <div key={idx} className="relative group">
+                            <input
+                              type="text"
+                              value={color}
+                              onChange={(e) => updateColor(idx, e.target.value)}
+                              className="w-20 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] font-bold text-center focus:outline-none focus:border-emerald-500"
+                            />
+                            <button 
+                              onClick={() => removeColor(idx)}
+                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="h-2 w-2" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
                     <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Description</h3>
-                    <div className="bg-white/5 p-4 rounded-2xl border border-white/5 max-h-[200px] overflow-y-auto custom-scrollbar">
-                      <p className="text-sm text-gray-300 leading-relaxed font-medium">
-                        {product.description || 'No description found for this product. You can add one after importing.'}
-                      </p>
-                    </div>
+                    <textarea
+                      rows={6}
+                      value={product.description}
+                      onChange={(e) => updateProductField('description', e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-gray-300 leading-relaxed font-medium focus:outline-none focus:border-emerald-500 transition-all resize-none custom-scrollbar"
+                    />
                   </div>
                 </div>
 

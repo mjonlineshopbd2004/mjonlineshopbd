@@ -52,8 +52,10 @@ export const createProduct = async (req: Request, res: Response) => {
 
     await db.collection('products').doc(newProduct.id).set(newProduct);
     
-    // Sync to Google Sheet
-    await syncProductToSheet(newProduct);
+    // Sync to Google Sheet (Non-blocking to avoid timeouts)
+    syncProductToSheet(newProduct).catch(err => {
+      console.error('Background product sync failed (create):', err.message);
+    });
     
     res.status(201).json(newProduct);
   } catch (error) {
@@ -139,8 +141,10 @@ export const updateProduct = async (req: Request, res: Response) => {
     const updatedDoc = await productRef.get();
     const updatedProduct = { id: updatedDoc.id, ...updatedDoc.data() } as Product;
     
-    // Sync to Google Sheet
-    await syncProductToSheet(updatedProduct);
+    // Sync to Google Sheet (Non-blocking to avoid timeouts)
+    syncProductToSheet(updatedProduct).catch(err => {
+      console.error('Background product sync failed (update):', err.message);
+    });
     
     res.json(updatedProduct);
   } catch (error) {
@@ -155,8 +159,10 @@ export const deleteProduct = async (req: Request, res: Response) => {
     const productId = req.params.id;
     await db.collection('products').doc(productId).delete();
     
-    // Sync to Google Sheet
-    await deleteProductFromSheet(productId);
+    // Sync to Google Sheet (Non-blocking)
+    deleteProductFromSheet(productId).catch(err => {
+      console.error('Background product delete sync failed:', err.message);
+    });
     
     res.json({ message: 'Product deleted successfully' });
   } catch (error) {

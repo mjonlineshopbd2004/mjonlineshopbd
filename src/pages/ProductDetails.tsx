@@ -26,6 +26,8 @@ export default function ProductDetails() {
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
+  const [canReview, setCanReview] = useState(false);
+  const [checkingReviewEligibility, setCheckingReviewEligibility] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -79,6 +81,54 @@ export default function ProductDetails() {
   const { user: authUser } = useAuth();
 
   useEffect(() => {
+    const checkReviewEligibility = async () => {
+      if (!id || !authUser) {
+        setCanReview(false);
+        return;
+      }
+      
+      setCheckingReviewEligibility(true);
+      try {
+        // 1. Check if user already reviewed this product
+        const existingReviewQuery = query(
+          collection(db, 'reviews'),
+          where('productId', '==', id),
+          where('userId', '==', authUser.uid),
+          limit(1)
+        );
+        const existingReviewSnap = await getDocs(existingReviewQuery);
+        
+        if (!existingReviewSnap.empty) {
+          setCanReview(false);
+          return;
+        }
+
+        // 2. Check if user has a delivered order for this product
+        const ordersQuery = query(
+          collection(db, 'orders'),
+          where('userId', '==', authUser.uid),
+          where('status', '==', 'delivered')
+        );
+        const ordersSnap = await getDocs(ordersQuery);
+        
+        const hasOrdered = ordersSnap.docs.some(doc => {
+          const orderData = doc.data();
+          return orderData.items?.some((item: any) => item.id === id);
+        });
+
+        setCanReview(hasOrdered);
+      } catch (error) {
+        console.error("Error checking review eligibility:", error);
+        setCanReview(false);
+      } finally {
+        setCheckingReviewEligibility(false);
+      }
+    };
+
+    checkReviewEligibility();
+  }, [id, authUser]);
+
+  useEffect(() => {
     const fetchReviews = async () => {
       if (!id) return;
       try {
@@ -105,6 +155,10 @@ export default function ProductDetails() {
     }
     if (!reviewForm.comment.trim()) {
       toast.error('Please write a comment');
+      return;
+    }
+    if (!canReview) {
+      toast.error('You can only review products after they have been delivered.');
       return;
     }
 
@@ -257,6 +311,23 @@ export default function ProductDetails() {
                   controls 
                   poster={getProxyUrl(product.images[0])}
                 />
+              </div>
+            </div>
+          )}
+
+          {/* Product Specifications (Small Table Style) */}
+          {product.specifications && product.specifications.length > 0 && (
+            <div className="mt-12 overflow-hidden rounded-xl border border-gray-100 shadow-sm">
+              <div className="bg-[#003d3d] px-4 py-2">
+                <h3 className="text-[10px] font-black text-white uppercase tracking-widest text-center">Specification</h3>
+              </div>
+              <div className="divide-y divide-gray-100">
+                {product.specifications.map((spec, idx) => (
+                  <div key={idx} className="flex justify-between items-center px-4 py-2 bg-white hover:bg-gray-50 transition-colors">
+                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">{spec.key}</span>
+                    <span className="text-[10px] text-gray-900 font-black text-right">{spec.value}</span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -468,21 +539,6 @@ export default function ProductDetails() {
         </div>
       </div>
 
-      {/* Specifications Section */}
-      {product.specifications && product.specifications.length > 0 && (
-        <section className="pt-24 border-t border-gray-100">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8 tracking-tight">Product Specifications</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {product.specifications.map((spec, idx) => (
-              <div key={idx} className="flex flex-col p-6 bg-gray-50 rounded-3xl border border-gray-100">
-                <span className="text-gray-500 font-bold text-xs uppercase tracking-widest mb-2">{spec.key}</span>
-                <span className="text-gray-900 font-black text-lg">{spec.value}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* Reviews Section */}
       <section className="pt-24 border-t border-gray-100 mb-24">
         <div className="flex flex-col lg:flex-row gap-12">
@@ -499,52 +555,83 @@ export default function ProductDetails() {
             {/* Review Form */}
             <div className="bg-gray-50 p-8 rounded-[2rem] border border-gray-100">
               <h3 className="text-xl font-bold text-gray-900 mb-6 tracking-tight">Write a Review</h3>
-              <form onSubmit={handleReviewSubmit} className="space-y-6">
-                <div>
-                  <label className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-3 block">Rating</label>
-                  <div className="flex space-x-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setReviewForm({ ...reviewForm, rating: star })}
-                        className="transition-transform hover:scale-110"
-                      >
-                        <Star
-                          className={cn(
-                            "h-8 w-8",
-                            star <= reviewForm.rating ? "text-yellow-500 fill-yellow-500" : "text-gray-300"
-                          )}
-                        />
-                      </button>
-                    ))}
+              
+              {!authUser ? (
+                <div className="text-center py-6">
+                  <p className="text-gray-500 font-bold mb-4">Please login to write a review.</p>
+                  <button 
+                    onClick={() => navigate('/login')}
+                    className="bg-gray-900 text-white px-6 py-2 rounded-xl font-bold text-sm"
+                  >
+                    Login Now
+                  </button>
+                </div>
+              ) : checkingReviewEligibility ? (
+                <div className="flex flex-col items-center justify-center py-6 space-y-3">
+                  <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Checking eligibility...</p>
+                </div>
+              ) : canReview ? (
+                <form onSubmit={handleReviewSubmit} className="space-y-6">
+                  <div>
+                    <label className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-3 block">Rating</label>
+                    <div className="flex space-x-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setReviewForm({ ...reviewForm, rating: star })}
+                          className="transition-transform hover:scale-110"
+                        >
+                          <Star
+                            className={cn(
+                              "h-8 w-8",
+                              star <= reviewForm.rating ? "text-yellow-500 fill-yellow-500" : "text-gray-300"
+                            )}
+                          />
+                        </button>
+                      ))}
+                    </div>
                   </div>
+                  <div>
+                    <label className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-3 block">Your Comment</label>
+                    <textarea
+                      rows={4}
+                      className="w-full bg-white border-2 border-transparent focus:border-orange-500 rounded-2xl px-6 py-4 outline-none transition-all font-bold"
+                      placeholder="Share your thoughts about this product..."
+                      value={reviewForm.comment}
+                      onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingReview}
+                    className="w-full bg-gray-900 text-white py-4 rounded-2xl font-bold text-lg shadow-xl hover:bg-black transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+                  >
+                    {isSubmittingReview ? (
+                      <div className="h-6 w-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <>
+                        <span>Submit Review</span>
+                        <Send className="h-5 w-5" />
+                      </>
+                    )}
+                  </button>
+                </form>
+              ) : (
+                <div className="text-center py-6 space-y-4">
+                  <div className="bg-orange-50 p-4 rounded-2xl inline-block">
+                    <ShieldCheck className="h-8 w-8 text-orange-600" />
+                  </div>
+                  <p className="text-gray-600 font-bold text-sm leading-relaxed">
+                    আপনি শুধুমাত্র এই পণ্যটি ডেলিভারি পাওয়ার পরেই রিভিউ দিতে পারবেন। 
+                    <br />
+                    <span className="text-xs text-gray-400 mt-2 block font-medium">
+                      (You can only review this product after it has been delivered to you.)
+                    </span>
+                  </p>
                 </div>
-                <div>
-                  <label className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-3 block">Your Comment</label>
-                  <textarea
-                    rows={4}
-                    className="w-full bg-white border-2 border-transparent focus:border-orange-500 rounded-2xl px-6 py-4 outline-none transition-all font-bold"
-                    placeholder="Share your thoughts about this product..."
-                    value={reviewForm.comment}
-                    onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={isSubmittingReview}
-                  className="w-full bg-gray-900 text-white py-4 rounded-2xl font-bold text-lg shadow-xl hover:bg-black transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
-                >
-                  {isSubmittingReview ? (
-                    <div className="h-6 w-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    <>
-                      <span>Submit Review</span>
-                      <Send className="h-5 w-5" />
-                    </>
-                  )}
-                </button>
-              </form>
+              )}
             </div>
           </div>
 

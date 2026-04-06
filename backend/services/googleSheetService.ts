@@ -103,13 +103,27 @@ export const syncOrderToSheet = async (order: any) => {
     try {
       await doc.loadInfo();
     } catch (loadError: any) {
-      console.error(`Failed to load spreadsheet ${sanitizedId}:`, loadError.message);
+      console.error(`Failed to load spreadsheet ${sanitizedId} for order sync:`, loadError.message);
       if (loadError.response) {
         console.error('Full Google API Error Response (loadInfo):', JSON.stringify(loadError.response.data, null, 2));
       }
-      throw new Error(`Google Sheets Access Denied: The Service Account (${config.clientEmail.trim()}) does not have permission to access spreadsheet ${sanitizedId}. Please ensure you have shared the spreadsheet with this email and granted "Editor" access.`);
+      
+      if (loadError.message.includes('403') || loadError.message.includes('permission')) {
+        console.error(`
+          CRITICAL: Google Sheets Access Denied (403) for Orders.
+          The Service Account (${config.clientEmail.trim()}) does not have permission to access spreadsheet ${sanitizedId}.
+          
+          HOW TO FIX:
+          1. Open your Google Sheet: https://docs.google.com/spreadsheets/d/${sanitizedId}
+          2. Click the "Share" button in the top right.
+          3. Add this email: ${config.clientEmail.trim()}
+          4. Set the role to "Editor".
+          5. Click "Send".
+        `);
+      }
+      return; // Don't throw, just stop the sync
     }
-    console.log(`Spreadsheet "${doc.title}" loaded.`);
+    console.log(`Spreadsheet "${doc.title}" loaded for order sync.`);
 
     let sheet = doc.sheetsByTitle['Orders'];
     if (!sheet) {
@@ -165,7 +179,14 @@ export const syncOrderToSheet = async (order: any) => {
 };
 
 export const syncProductToSheet = async (product: any) => {
-  const config = await getGoogleSheetConfig();
+  let config: GoogleSheetConfig | null = null;
+  try {
+    config = await getGoogleSheetConfig();
+  } catch (configError: any) {
+    console.error('Failed to fetch Google Sheet config for product sync:', configError.message);
+    return;
+  }
+
   if (!config || !config.enabled || !config.spreadsheetId || !config.clientEmail || !config.privateKey) {
     return;
   }
@@ -195,7 +216,30 @@ export const syncProductToSheet = async (product: any) => {
     });
 
     const doc = new GoogleSpreadsheet(sanitizedId, serviceAccountAuth);
-    await doc.loadInfo();
+    
+    try {
+      await doc.loadInfo();
+    } catch (loadError: any) {
+      console.error(`Failed to load spreadsheet ${sanitizedId} for product sync:`, loadError.message);
+      if (loadError.response) {
+        console.error('Full Google API Error Response (loadInfo):', JSON.stringify(loadError.response.data, null, 2));
+      }
+      
+      if (loadError.message.includes('403') || loadError.message.includes('permission')) {
+        console.error(`
+          CRITICAL: Google Sheets Access Denied (403).
+          The Service Account (${config.clientEmail.trim()}) does not have permission to access spreadsheet ${sanitizedId}.
+          
+          HOW TO FIX:
+          1. Open your Google Sheet: https://docs.google.com/spreadsheets/d/${sanitizedId}
+          2. Click the "Share" button in the top right.
+          3. Add this email: ${config.clientEmail.trim()}
+          4. Set the role to "Editor".
+          5. Click "Send".
+        `);
+      }
+      return; // Don't throw, just stop the sync
+    }
 
     let sheet = doc.sheetsByTitle['Products'];
     if (!sheet) {
@@ -278,7 +322,12 @@ export const deleteProductFromSheet = async (productId: string) => {
     });
 
     const doc = new GoogleSpreadsheet(sanitizedId, serviceAccountAuth);
-    await doc.loadInfo();
+    try {
+      await doc.loadInfo();
+    } catch (loadError: any) {
+      console.error(`Failed to load spreadsheet ${sanitizedId} for product deletion sync:`, loadError.message);
+      return;
+    }
 
     const sheet = doc.sheetsByTitle['Products'];
     if (!sheet) return;

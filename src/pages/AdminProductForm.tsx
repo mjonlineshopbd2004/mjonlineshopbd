@@ -354,8 +354,19 @@ export default function AdminProductForm() {
         });
         
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to update product');
+          let errorMsg = 'Failed to update product';
+          try {
+            const errorData = await response.json();
+            errorMsg = errorData.message || errorMsg;
+          } catch (e) {
+            try {
+              const text = await response.text();
+              errorMsg = text.slice(0, 100) || errorMsg;
+            } catch (e2) {
+              errorMsg = `Status: ${response.status} ${response.statusText}`;
+            }
+          }
+          throw new Error(errorMsg);
         }
         
         toast.success('Product updated successfully');
@@ -370,8 +381,19 @@ export default function AdminProductForm() {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to create product');
+          let errorMsg = 'Failed to create product';
+          try {
+            const errorData = await response.json();
+            errorMsg = errorData.message || errorMsg;
+          } catch (e) {
+            try {
+              const text = await response.text();
+              errorMsg = text.slice(0, 100) || errorMsg;
+            } catch (e2) {
+              errorMsg = `Status: ${response.status} ${response.statusText}`;
+            }
+          }
+          throw new Error(errorMsg);
         }
 
         toast.success('Product added successfully');
