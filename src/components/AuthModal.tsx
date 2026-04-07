@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 export default function AuthModal() {
   const { isAuthModalOpen, setAuthModalOpen, loginWithGoogle, loginWithEmail, checkEmail, sendEmailOTP, verifyEmailOTP, verifyRegister, resetPassword, isLoggingIn } = useAuth();
   const { settings } = useSettings();
+  const [logoError, setLogoError] = useState(false);
   
   const [step, setStep] = useState<'email' | 'password' | 'register' | 'forgot'>('email');
   const [email, setEmail] = useState('');
@@ -99,8 +100,13 @@ export default function AuthModal() {
             <div className="p-6 md:p-8">
               {/* Logo */}
               <div className="flex justify-center mb-6">
-                {settings.logoUrl ? (
-                  <img src={getProxyUrl(settings.logoUrl)} alt="Logo" className="h-16 object-contain" />
+                {settings.logoUrl && !logoError ? (
+                  <img 
+                    src={getProxyUrl(settings.logoUrl)} 
+                    alt="Logo" 
+                    className="h-16 object-contain" 
+                    onError={() => setLogoError(true)}
+                  />
                 ) : (
                   <div className="h-16 w-16 bg-primary rounded-full flex items-center justify-center text-white font-black text-2xl">
                     {settings.storeName.charAt(0)}

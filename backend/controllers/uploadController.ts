@@ -70,6 +70,7 @@ export const uploadFile = async (req: Request, res: Response) => {
 
     // 1. Try Firebase Storage first (Preferred)
     try {
+      console.log('Attempting Firebase Storage upload...');
       const firebaseUrl = await firebaseStorageService.uploadFile(
         req.file.path,
         req.file.originalname,
@@ -77,13 +78,14 @@ export const uploadFile = async (req: Request, res: Response) => {
       );
 
       if (firebaseUrl) {
+        console.log('Firebase Storage upload successful:', firebaseUrl);
         if (fs.existsSync(req.file.path)) {
           fs.unlinkSync(req.file.path);
         }
         return res.status(200).json({ url: firebaseUrl });
       }
     } catch (firebaseError) {
-      console.error('Firebase Storage upload failed, trying Google Drive:', firebaseError);
+      console.warn('Firebase Storage upload failed, trying Google Drive:', firebaseError);
     }
 
     await ensureDriveConfigured();
@@ -91,6 +93,7 @@ export const uploadFile = async (req: Request, res: Response) => {
     // 2. Fallback to Google Drive
     if (googleDriveService.isConfigured()) {
       try {
+        console.log('Attempting Google Drive upload...');
         const driveUrl = await googleDriveService.uploadFile(
           req.file.path,
           req.file.filename,
@@ -98,6 +101,7 @@ export const uploadFile = async (req: Request, res: Response) => {
         );
 
         if (driveUrl) {
+          console.log('Google Drive upload successful:', driveUrl);
           // Delete local file after upload to Drive
           if (fs.existsSync(req.file.path)) {
             fs.unlinkSync(req.file.path);
@@ -105,11 +109,14 @@ export const uploadFile = async (req: Request, res: Response) => {
           return res.status(200).json({ url: driveUrl });
         }
       } catch (driveError: any) {
-        console.error('Google Drive upload failed:', driveError);
+        console.warn('Google Drive upload failed, falling back to local storage:', driveError.message);
       }
+    } else {
+      console.log('Google Drive not configured, falling back to local storage.');
     }
 
     // 3. Fallback to local storage (Last resort)
+    console.log('Using local storage fallback for file:', req.file.filename);
     const fileUrl = `/uploads/${req.file.filename}`;
     res.status(200).json({ url: fileUrl });
   } catch (error) {

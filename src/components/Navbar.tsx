@@ -118,7 +118,7 @@ export default function Navbar() {
 
   return (
     <nav className="sticky top-0 z-50 w-full">
-      {/* Top Bar */}
+      {/* Top Bar - Reverted to primary color as requested */}
       <div className="bg-primary text-white py-2 hidden md:block">
         <div className="container-custom flex justify-between items-center text-[13px] font-medium">
           <div className="flex items-center gap-6">

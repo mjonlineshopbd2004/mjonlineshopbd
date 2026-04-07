@@ -11,6 +11,7 @@ export default function BottomNav() {
   const { settings } = useSettings();
   const { totalItems } = useCart();
   const { items: wishlistItems } = useWishlist();
+  const [logoError, setLogoError] = React.useState(false);
 
   const navItems = [
     { name: 'Categories', path: '/categories', icon: Layers },
@@ -35,11 +36,12 @@ export default function BottomNav() {
                 className="flex flex-col items-center justify-center -translate-y-2 bg-white p-1 rounded-full shadow-xl border-4 border-white w-16 h-16 transition-transform active:scale-95"
               >
                 <div className="w-full h-full rounded-full overflow-hidden bg-white flex items-center justify-center border border-gray-100">
-                  {settings.logoUrl ? (
+                  {settings.logoUrl && !logoError ? (
                     <img 
                       src={getProxyUrl(settings.logoUrl)} 
                       alt="Logo" 
                       className="w-full h-full object-contain"
+                      onError={() => setLogoError(true)}
                     />
                   ) : (
                     <div className="w-full h-full bg-primary rounded-full flex items-center justify-center text-white font-black text-xl">

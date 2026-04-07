@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -18,7 +18,9 @@ import {
   AlertTriangle,
   ShoppingBag,
   Undo2,
-  Truck
+  Truck,
+  Download,
+  Printer
 } from 'lucide-react';
 import { cn, formatPrice, getProxyUrl } from '../lib/utils';
 import { toast } from 'sonner';
@@ -26,10 +28,15 @@ import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import Modal from '../components/Modal';
 import TrackingStatus from '../components/TrackingStatus';
+import { useSettings } from '../contexts/SettingsContext';
+import { Invoice } from '../components/Invoice';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export default function OrderHistory() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { settings } = useSettings();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'completed' | 'pending' | 'cancelled'>('pending');
@@ -38,6 +45,118 @@ export default function OrderHistory() {
   const [orderToRefund, setOrderToRefund] = useState<string | null>(null);
   const [refundReason, setRefundReason] = useState('');
   const [isSubmittingRefund, setIsSubmittingRefund] = useState(false);
+  
+  const invoiceRef = useRef<HTMLDivElement>(null);
+  const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState<Order | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [scale, setScale] = useState(0.8);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const updateScale = () => {
+      if (containerRef.current) {
+        const containerWidth = containerRef.current.offsetWidth;
+        const baseWidth = 794;
+        const newScale = Math.min(0.8, (containerWidth - 32) / baseWidth);
+        setScale(newScale);
+      }
+    };
+    if (showInvoiceModal) {
+      updateScale();
+      window.addEventListener('resize', updateScale);
+    }
+    return () => window.removeEventListener('resize', updateScale);
+  }, [showInvoiceModal]);
+
+  const handleViewInvoice = (order: Order) => {
+    setSelectedOrderForInvoice(order);
+    setShowInvoiceModal(true);
+  };
+
+  const handleDownloadInvoice = async () => {
+    if (!selectedOrderForInvoice) return;
+    setIsGenerating(true);
+    const toastId = toast.loading('Generating invoice...');
+    
+    // Wait for state update and DOM render
+    setTimeout(async () => {
+      if (!invoiceRef.current) {
+        setIsGenerating(false);
+        toast.error('Failed to initialize invoice generator.', { id: toastId });
+        return;
+      }
+
+      try {
+        const canvas = await html2canvas(invoiceRef.current, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+          onclone: (clonedDoc) => {
+            // Ensure the cloned element is visible for capture
+            const el = clonedDoc.getElementById('invoice-capture-container');
+            if (el) {
+              el.style.opacity = '1';
+              el.style.visibility = 'visible';
+              el.style.position = 'static';
+              el.style.left = '0';
+            }
+          }
+        });
+        
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        
+        // Add image scaled to fit exactly one A4 page
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`invoice-${selectedOrderForInvoice.id.slice(-8)}.pdf`);
+        toast.success('Invoice downloaded successfully!', { id: toastId });
+      } catch (error) {
+        console.error('Error generating PDF:', error);
+        toast.error('Failed to generate invoice.', { id: toastId });
+      } finally {
+        setIsGenerating(false);
+        setSelectedOrderForInvoice(null);
+      }
+    }, 100);
+  };
+
+  const handlePrintInvoice = (order: Order) => {
+    setSelectedOrderForInvoice(order);
+    
+    setTimeout(() => {
+      if (!invoiceRef.current) return;
+      
+      const printContent = invoiceRef.current.innerHTML;
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) return;
+
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Invoice - ${order.id}</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <style>
+              @media print {
+                body { padding: 0; margin: 0; }
+                .no-print { display: none; }
+              }
+            </style>
+          </head>
+          <body onload="window.print(); window.close();">
+            <div class="p-10">
+              ${printContent}
+            </div>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      setSelectedOrderForInvoice(null);
+    }, 100);
+  };
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -281,6 +400,24 @@ export default function OrderHistory() {
                       View Details
                       <Eye className="h-4 w-4" />
                     </button>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleViewInvoice(order)}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold text-xs hover:bg-gray-50 transition-all"
+                        title="View Invoice"
+                      >
+                        <Eye className="h-4 w-4" />
+                        View Invoice
+                      </button>
+                      <button
+                        onClick={() => handlePrintInvoice(order)}
+                        className="flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold text-xs hover:bg-gray-50 transition-all"
+                        title="Print Invoice"
+                      >
+                        <Printer className="h-4 w-4" />
+                      </button>
+                    </div>
                     
                     {order.status !== 'cancelled' && order.status !== 'delivered' && !order.refundRequest && (
                       <button
@@ -377,6 +514,68 @@ export default function OrderHistory() {
           </div>
         </div>
       </Modal>
+
+      {/* Invoice Preview Modal */}
+      <Modal
+        isOpen={showInvoiceModal}
+        onClose={() => {
+          setShowInvoiceModal(false);
+          setSelectedOrderForInvoice(null);
+        }}
+        title="Invoice Preview"
+        className="max-w-4xl"
+      >
+        <div className="space-y-4">
+          <div className="bg-gray-100 rounded-2xl p-2 sm:p-4 overflow-auto max-h-[80vh] border border-gray-200 flex justify-center items-start" ref={containerRef}>
+            {selectedOrderForInvoice && (
+              <div style={{ 
+                transform: `scale(${scale})`, 
+                transformOrigin: 'top center',
+                width: '794px',
+                height: '1123px',
+                marginBottom: `${-1123 * (1 - scale)}px`
+              }}>
+                <Invoice order={selectedOrderForInvoice} settings={settings} />
+              </div>
+            )}
+          </div>
+          
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowInvoiceModal(false)}
+              className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all"
+            >
+              Close
+            </button>
+            <button
+              onClick={handleDownloadInvoice}
+              disabled={isGenerating}
+              className="flex-1 py-3 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <Download className="h-4 w-4" />
+              {isGenerating ? 'Generating...' : 'Download PDF'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Hidden Invoice for Generation */}
+      <div 
+        id="invoice-capture-container"
+        style={{ 
+          position: 'absolute', 
+          left: '-9999px', 
+          top: 0, 
+          opacity: 0, 
+          pointerEvents: 'none',
+          backgroundColor: '#ffffff',
+          color: '#000000'
+        }}
+      >
+        {selectedOrderForInvoice && (
+          <Invoice ref={invoiceRef} order={selectedOrderForInvoice} settings={settings} />
+        )}
+      </div>
     </div>
   );
 }

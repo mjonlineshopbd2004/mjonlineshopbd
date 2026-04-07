@@ -1,20 +1,116 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Order } from '../types';
-import { CheckCircle2, Package, Truck, ShoppingBag, ArrowRight, MapPin, Phone, User, XCircle } from 'lucide-react';
+import { CheckCircle2, Package, Truck, ShoppingBag, ArrowRight, MapPin, Phone, User, XCircle, Download, Printer, FileText, Eye } from 'lucide-react';
 import { formatPrice, cn, getProxyUrl } from '../lib/utils';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
+import { useSettings } from '../contexts/SettingsContext';
+import { Invoice } from '../components/Invoice';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export default function OrderConfirmation() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const { settings } = useSettings();
+  const invoiceRef = useRef<HTMLDivElement>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [scale, setScale] = useState(0.8);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const updateScale = () => {
+      if (containerRef.current) {
+        const containerWidth = containerRef.current.offsetWidth;
+        const baseWidth = 794;
+        const newScale = Math.min(0.8, (containerWidth - 32) / baseWidth);
+        setScale(newScale);
+      }
+    };
+    if (showInvoiceModal) {
+      updateScale();
+      window.addEventListener('resize', updateScale);
+    }
+    return () => window.removeEventListener('resize', updateScale);
+  }, [showInvoiceModal]);
 
   const paymentStatus = searchParams.get('payment');
+
+  const handleDownloadInvoice = async () => {
+    if (!invoiceRef.current || !order) return;
+    
+    setIsGenerating(true);
+    const toastId = toast.loading('Generating invoice...');
+    
+    try {
+      const canvas = await html2canvas(invoiceRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        onclone: (clonedDoc) => {
+          // Ensure the cloned element is visible for capture
+          const el = clonedDoc.getElementById('invoice-capture-container');
+          if (el) {
+            el.style.opacity = '1';
+            el.style.visibility = 'visible';
+            el.style.position = 'static';
+            el.style.left = '0';
+          }
+        }
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      // Add image scaled to fit exactly one A4 page
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`invoice-${order.id.slice(-8)}.pdf`);
+      toast.success('Invoice downloaded successfully!', { id: toastId });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Failed to generate invoice.', { id: toastId });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handlePrintInvoice = () => {
+    if (!invoiceRef.current) return;
+    
+    const printContent = invoiceRef.current.innerHTML;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Invoice - ${order?.id}</title>
+          <script src="https://cdn.tailwindcss.com"></script>
+          <style>
+            @media print {
+              body { padding: 0; margin: 0; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body onload="window.print(); window.close();">
+          <div class="p-10">
+            ${printContent}
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   useEffect(() => {
     if (paymentStatus === 'success') {
@@ -192,11 +288,29 @@ export default function OrderConfirmation() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 pt-8">
+            <button
+              onClick={() => setShowInvoiceModal(true)}
+              className="flex-1 bg-gray-900 text-white py-4 rounded-2xl font-bold text-center hover:bg-black transition-all flex items-center justify-center space-x-2"
+            >
+              <Eye className="h-5 w-5" />
+              <span>View Invoice</span>
+            </button>
+            <button
+              onClick={handlePrintInvoice}
+              className="flex-1 bg-white border-2 border-gray-900 text-gray-900 py-4 rounded-2xl font-bold text-center hover:bg-gray-50 transition-all flex items-center justify-center space-x-2"
+            >
+              <Printer className="h-5 w-5" />
+              <span>Print Invoice</span>
+            </button>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 pt-4">
             <Link
               to="/orders"
-              className="flex-1 bg-gray-100 text-gray-900 py-4 rounded-2xl font-bold text-center hover:bg-gray-200 transition-all"
+              className="flex-1 bg-gray-100 text-gray-900 py-4 rounded-2xl font-bold text-center hover:bg-gray-200 transition-all flex items-center justify-center space-x-2"
             >
-              View Order History
+              <FileText className="h-5 w-5" />
+              <span>View Order History</span>
             </Link>
             <Link
               to="/products"
@@ -208,6 +322,75 @@ export default function OrderConfirmation() {
           </div>
         </div>
       </motion.div>
+
+      {/* Invoice Preview Modal */}
+      <AnimatePresence>
+        {showInvoiceModal && order && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white w-full max-w-4xl rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col max-h-[95vh]"
+            >
+              <div className="p-4 sm:p-6 border-b border-gray-100 flex justify-between items-center">
+                <h2 className="text-xl font-bold text-gray-900">Invoice Preview</h2>
+                <button
+                  onClick={() => setShowInvoiceModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <XCircle className="h-6 w-6 text-gray-400" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-auto p-2 sm:p-4 bg-gray-50 flex justify-center items-start" ref={containerRef}>
+                <div style={{ 
+                  transform: `scale(${scale})`, 
+                  transformOrigin: 'top center',
+                  width: '794px',
+                  height: '1123px',
+                  marginBottom: `${-1123 * (1 - scale)}px`
+                }}>
+                  <Invoice order={order} settings={settings} />
+                </div>
+              </div>
+
+              <div className="p-4 sm:p-6 border-t border-gray-100 flex gap-3">
+                <button
+                  onClick={() => setShowInvoiceModal(false)}
+                  className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-bold hover:bg-gray-200 transition-all text-sm"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={handleDownloadInvoice}
+                  disabled={isGenerating}
+                  className="flex-1 py-3 bg-orange-600 text-white rounded-xl font-bold shadow-lg shadow-orange-200 hover:bg-orange-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-sm"
+                >
+                  <Download className="h-4 w-4" />
+                  {isGenerating ? 'Generating...' : 'Download PDF'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Hidden Invoice for Generation */}
+      <div 
+        id="invoice-capture-container"
+        style={{ 
+          position: 'absolute', 
+          left: '-9999px', 
+          top: 0, 
+          opacity: 0, 
+          pointerEvents: 'none',
+          backgroundColor: '#ffffff',
+          color: '#000000'
+        }}
+      >
+        <Invoice ref={invoiceRef} order={order} settings={settings} />
+      </div>
     </div>
   );
 }

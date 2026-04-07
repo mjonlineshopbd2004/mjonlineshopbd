@@ -92,7 +92,7 @@ interface SettingsContextType {
 export const defaultSettings: SiteSettings = {
   storeName: 'MJ ONLINE SHOP BD',
   shopTagline: 'Premium Online Shop',
-  logoUrl: '',
+  logoUrl: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&q=80&w=200&h=200',
   phone: '01610880813',
   whatsappNumber: '01610880813',
   paymentNumber: '01610880813',
@@ -168,6 +168,12 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     const unsub = onSnapshot(doc(db, 'settings', 'site'), (doc) => {
       if (doc.exists()) {
         const data = doc.data() as any;
+        
+        // Handle broken/expired OpenAI logo URL
+        if (data.logoUrl && data.logoUrl.includes('files.oaiusercontent.com')) {
+          data.logoUrl = defaultSettings.logoUrl;
+        }
+
         const categories = data.categories && data.categories.length > 0 
           ? data.categories 
           : defaultSettings.categories;

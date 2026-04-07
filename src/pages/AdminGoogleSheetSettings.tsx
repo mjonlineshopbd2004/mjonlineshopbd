@@ -167,6 +167,10 @@ const AdminGoogleSheetSettings: React.FC = () => {
   };
 
   const handleTestDrive = async () => {
+    if (!settings.driveFolderId) {
+      toast.error('Please provide a Folder ID before testing');
+      return;
+    }
     setTestingDrive(true);
     try {
       const idToken = await auth.currentUser?.getIdToken();
@@ -176,13 +180,28 @@ const AdminGoogleSheetSettings: React.FC = () => {
           'Accept': 'application/json'
         }
       });
-      const data = await response.json();
-      if (response.ok) {
-        toast.success(data.message);
+      
+      const contentType = response.headers.get('content-type');
+      let data: any;
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
       } else {
-        toast.error(data.message || 'Drive test failed');
+        const text = await response.text();
+        throw new Error(text.substring(0, 100) || 'Server error');
+      }
+
+      if (response.ok) {
+        toast.success(data.message || 'Drive folder is accessible!');
+      } else {
+        const errorMsg = data.error || data.message || 'Drive test failed';
+        if (errorMsg.includes('quota')) {
+          toast.error('Quota Error: You must share the folder with the Service Account email and grant "Editor" access.');
+        } else {
+          toast.error(errorMsg);
+        }
       }
     } catch (error: any) {
+      console.error('Drive test error:', error);
       toast.error(`Drive test failed: ${error.message}`);
     } finally {
       setTestingDrive(false);
@@ -347,11 +366,20 @@ const AdminGoogleSheetSettings: React.FC = () => {
               </div>
               <input
                 type="text"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className={cn(
+                  "w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent",
+                  !settings.driveFolderId && settings.enabled ? "border-orange-300 bg-orange-50" : "border-gray-300"
+                )}
                 placeholder="e.g. 1aBcDeFgHiJkLmNoPqRsTuVwXyZ"
                 value={settings.driveFolderId || ''}
                 onChange={(e) => setSettings({ ...settings, driveFolderId: e.target.value })}
               />
+              {!settings.driveFolderId && settings.enabled && (
+                <p className="mt-1 text-xs text-orange-600 font-medium flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  Folder ID is required for image/video uploads to work.
+                </p>
+              )}
               <p className="mt-1 text-xs text-gray-500">
                 Found in the URL of your Google Drive folder: drive.google.com/drive/folders/<strong>[ID]</strong>
               </p>

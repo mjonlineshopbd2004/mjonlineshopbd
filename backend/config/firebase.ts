@@ -24,12 +24,13 @@ try {
 
 // Explicitly set the project ID in the environment to avoid confusion with the AI Studio project
 const projectId = firebaseConfig.projectId || process.env.GOOGLE_CLOUD_PROJECT;
+const storageBucket = firebaseConfig.storageBucket || (projectId ? `${projectId}.appspot.com` : undefined);
 
 if (projectId) {
   process.env.GOOGLE_CLOUD_PROJECT = projectId;
   process.env.FIREBASE_CONFIG = JSON.stringify({
     projectId: projectId,
-    storageBucket: `${projectId}.appspot.com`,
+    storageBucket: storageBucket,
   });
 }
 
@@ -104,7 +105,8 @@ const initializeAdmin = () => {
           console.log('Initializing with FIREBASE_SERVICE_ACCOUNT env var for project:', serviceAccount.project_id);
           return initializeApp({
             credential: cert(serviceAccount),
-            projectId: serviceAccount.project_id
+            projectId: serviceAccount.project_id,
+            storageBucket: storageBucket
           });
         } else {
           console.warn('FIREBASE_SERVICE_ACCOUNT found but could not be parsed into a valid service account object.');
@@ -118,7 +120,8 @@ const initializeAdmin = () => {
     if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
       console.log('Initializing with GOOGLE_APPLICATION_CREDENTIALS file');
       return initializeApp({
-        projectId: projectId
+        projectId: projectId,
+        storageBucket: storageBucket
       });
     }
     
@@ -127,6 +130,7 @@ const initializeAdmin = () => {
       console.log('Initializing with explicit project ID:', projectId);
       return initializeApp({
         projectId: projectId,
+        storageBucket: storageBucket
       });
     }
 

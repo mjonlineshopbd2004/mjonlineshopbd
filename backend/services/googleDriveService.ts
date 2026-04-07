@@ -84,20 +84,31 @@ export class GoogleDriveService {
   }
 
   public async uploadFile(filePath: string, fileName: string, mimeType: string, customFolderId?: string): Promise<string | null> {
-    if (!this.drive) return null;
+    if (!this.drive) {
+      console.error('Google Drive Service not initialized');
+      return null;
+    }
+
+    const folderId = customFolderId || this.currentConfig?.folderId;
+    const email = this.currentConfig?.email;
+
+    if (!folderId) {
+      console.error('Google Drive Folder ID is missing. Service accounts cannot upload without a parent folder.');
+      throw new Error('Google Drive Folder ID is missing. Please configure it in Admin Settings and ensure the folder is shared with your Service Account email.');
+    }
 
     try {
-      const folderId = customFolderId || this.currentConfig?.folderId;
-      
       const fileMetadata = {
         name: fileName,
-        parents: folderId ? [folderId] : undefined,
+        parents: [folderId],
       };
 
       const media = {
         mimeType: mimeType,
         body: fs.createReadStream(filePath),
       };
+
+      console.log(`Attempting Google Drive upload to folder: ${folderId} for file: ${fileName}`);
 
       const response = await this.drive.files.create({
         requestBody: fileMetadata,
@@ -107,6 +118,7 @@ export class GoogleDriveService {
       });
 
       const fileId = response.data.id;
+      console.log(`Google Drive upload successful. File ID: ${fileId}`);
 
       // Make the file public (Anyone with the link can view)
       // We don't await this to speed up the response, but we add a catch to log errors
@@ -133,7 +145,14 @@ export class GoogleDriveService {
       const email = this.currentConfig?.email;
 
       if (error.message?.includes('storage quota') || (error.response?.data?.error?.message?.includes('storage quota'))) {
-        throw new Error(`Google Drive Quota Error: Service Accounts have 0GB storage quota by default. To fix this, you MUST use a "Shared Drive" (Team Drive) instead of a regular folder, or share the folder from a Google Workspace account that allows service account uploads. Alternatively, consider using Firebase Storage for media.`);
+        const quotaError = `Google Drive Quota Error: Service Accounts have 0GB storage quota by default. 
+          CRITICAL FIX:
+          1. You MUST share a Google Drive folder with your Service Account email: ${email}
+          2. Grant that email "Editor" permissions on the folder.
+          3. Copy the Folder ID and paste it into the Admin Settings.
+          4. Service accounts CANNOT upload to their own "My Drive" because they have no storage space.`;
+        console.error(quotaError);
+        throw new Error(quotaError);
       }
 
       if (error.message?.includes('File not found') || error.code === 404) {

@@ -6,6 +6,7 @@ import { getProxyUrl } from '../lib/utils';
 
 export default function Footer() {
   const { settings } = useSettings();
+  const [logoError, setLogoError] = React.useState(false);
 
   return (
     <footer className="bg-gray-900 text-gray-300 pt-16 pb-8">
@@ -14,8 +15,13 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <Link to="/" className="flex items-center mb-6">
-              {settings.logoUrl ? (
-                <img src={getProxyUrl(settings.logoUrl)} alt={settings.storeName} className="h-10 w-auto" />
+              {settings.logoUrl && !logoError ? (
+                <img 
+                  src={getProxyUrl(settings.logoUrl)} 
+                  alt={settings.storeName} 
+                  className="h-10 w-auto" 
+                  onError={() => setLogoError(true)}
+                />
               ) : (
                 <>
                   <span className="text-2xl font-bold text-primary">{settings.storeName.split(' ')[0]}</span>

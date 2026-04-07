@@ -864,9 +864,10 @@ export default function AdminSettings() {
                 <div key={bank.id} className="bg-[#1a1a1a] p-6 rounded-[28px] border border-white/10 relative group">
                   <button
                     onClick={() => removeBank(index)}
-                    className="absolute top-4 right-4 p-1.5 text-gray-700 hover:text-red-500 transition-colors"
+                    className="absolute top-4 right-4 p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all z-20 shadow-lg border border-red-500/20"
+                    title="Delete Bank"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-5 w-5" />
                   </button>
                   <div className="flex items-center space-x-4 mb-6">
                     <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center overflow-hidden relative group/banklogo">
@@ -901,7 +902,7 @@ export default function AdminSettings() {
                   </div>
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Account Name</label>
+                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Account Name</label>
                       <input
                         type="text"
                         className="w-full bg-[#111111] border border-white/10 focus:border-blue-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white"
@@ -911,7 +912,7 @@ export default function AdminSettings() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Account Number</label>
+                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Account Number</label>
                       <input
                         type="text"
                         className="w-full bg-[#111111] border border-white/10 focus:border-blue-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white"
@@ -986,67 +987,85 @@ export default function AdminSettings() {
           {/* Hero Banners */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="font-black text-gray-200 uppercase tracking-widest text-[10px]">Hero Banners</h3>
-              <button onClick={() => addBanner('banners')} className="text-[10px] font-black text-emerald-500 uppercase hover:underline">+ Add Banner</button>
+              <h3 className="font-black text-gray-100 uppercase tracking-widest text-xs">Hero Banners</h3>
+              <button onClick={() => addBanner('banners')} className="text-xs font-black text-emerald-500 uppercase hover:underline">+ Add Banner</button>
             </div>
             <div className="space-y-4">
               {(formData.banners || []).map((banner, index) => (
-                <div key={index} className="bg-[#1a1a1a] p-6 rounded-2xl border border-white/10 relative group">
-                  <button onClick={() => removeBanner('banners', index)} className="absolute top-4 right-4 p-1.5 text-gray-700 hover:text-red-500 transition-colors">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Banner Top Text (Small)</label>
+                <div key={index} className="bg-[#1a1a1a] p-6 rounded-[32px] border border-white/10 relative group overflow-hidden">
+                  <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/5">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center border border-emerald-500/20">
+                        <span className="text-emerald-500 font-black text-sm">{index + 1}</span>
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-white uppercase tracking-widest">Hero Banner</h4>
+                        <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">Main Slider Configuration</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => removeBanner('banners', index)} 
+                      className="p-2.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all shadow-lg border border-red-500/20 active:scale-95"
+                      title="Delete Banner"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Banner Top Text (Small)</label>
                         <input
                           type="text"
-                          className="w-full bg-[#111111] border border-white/10 focus:border-emerald-500 rounded-lg px-3 py-2 outline-none transition-all font-bold text-xs"
+                          className="w-full bg-[#111111] border border-white/10 focus:border-emerald-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white"
                           value={banner.topText}
                           onChange={(e) => updateBanner('banners', index, 'topText', e.target.value)}
                         />
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Banner Title</label>
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Banner Title</label>
                         <input
                           type="text"
-                          className="w-full bg-[#111111] border border-white/10 focus:border-emerald-500 rounded-lg px-3 py-2 outline-none transition-all font-bold text-xs"
+                          className="w-full bg-[#111111] border border-white/10 focus:border-emerald-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white"
                           value={banner.title}
                           onChange={(e) => updateBanner('banners', index, 'title', e.target.value)}
                         />
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Banner Subtitle</label>
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Banner Subtitle</label>
                         <textarea
-                          className="w-full bg-[#111111] border border-white/10 focus:border-emerald-500 rounded-lg px-3 py-2 outline-none transition-all font-bold text-xs h-16 resize-none"
+                          className="w-full bg-[#111111] border border-white/10 focus:border-emerald-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white h-24 resize-none"
                           value={banner.subtitle}
                           onChange={(e) => updateBanner('banners', index, 'subtitle', e.target.value)}
                         />
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Banner Link</label>
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Banner Link</label>
                         <input
                           type="text"
-                          className="w-full bg-[#111111] border border-white/10 focus:border-emerald-500 rounded-lg px-3 py-2 outline-none transition-all font-bold text-xs"
+                          className="w-full bg-[#111111] border border-white/10 focus:border-emerald-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white"
                           value={banner.link}
                           onChange={(e) => updateBanner('banners', index, 'link', e.target.value)}
                         />
                       </div>
                     </div>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Banner Image</label>
-                        <button className="text-[9px] font-black text-emerald-500 uppercase">Edit Image</button>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-end">
+                        <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Banner Image</label>
+                        <div className="text-[10px] font-black text-emerald-500/80 uppercase text-right tracking-wider leading-none">
+                          Rec: 1920x1080px<br/>Max: 2MB
+                        </div>
                       </div>
-                      <div className="aspect-[16/9] bg-[#111111] rounded-xl border border-dashed border-white/10 flex items-center justify-center overflow-hidden relative group/img">
+                      <div className="aspect-video bg-[#111111] rounded-[24px] border-2 border-dashed border-white/10 flex items-center justify-center overflow-hidden relative group/img shadow-inner">
                         {banner.image ? (
                           <img src={banner.image} alt="Banner" className="w-full h-full object-cover" />
                         ) : (
-                          <ImageIcon className="h-8 w-8 text-gray-800" />
+                          <ImageIcon className="h-12 w-12 text-gray-800" />
                         )}
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
-                          <label className="cursor-pointer p-2 bg-emerald-500 rounded-full text-white">
-                            <Upload className="h-4 w-4" />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
+                          <label className="cursor-pointer p-4 bg-emerald-500 rounded-2xl text-white shadow-2xl hover:scale-110 transition-transform flex items-center gap-2">
+                            <Upload className="h-5 w-5" />
+                            <span className="font-black text-xs uppercase tracking-widest">Upload Image</span>
                             <input type="file" className="hidden" accept="image/*" onChange={(e) => handleBannerUpload(index, 'banners', e)} />
                           </label>
                         </div>
@@ -1061,67 +1080,85 @@ export default function AdminSettings() {
           {/* Small Banners */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="font-black text-gray-200 uppercase tracking-widest text-[10px]">Small Banners (Side)</h3>
-              <button onClick={() => addBanner('smallBanners')} className="text-[10px] font-black text-emerald-500 uppercase hover:underline">+ Add Banner</button>
+              <h3 className="font-black text-gray-100 uppercase tracking-widest text-xs">Small Banners (Side)</h3>
+              <button onClick={() => addBanner('smallBanners')} className="text-xs font-black text-emerald-500 uppercase hover:underline">+ Add Banner</button>
             </div>
             <div className="space-y-4">
               {(formData.smallBanners || []).map((banner, index) => (
-                <div key={index} className="bg-[#1a1a1a] p-6 rounded-2xl border border-white/10 relative group">
-                  <button onClick={() => removeBanner('smallBanners', index)} className="absolute top-4 right-4 p-1.5 text-gray-700 hover:text-red-500 transition-colors">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Banner Top Text (Small)</label>
+                <div key={index} className="bg-[#1a1a1a] p-6 rounded-[32px] border border-white/10 relative group overflow-hidden">
+                  <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/5">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center border border-emerald-500/20">
+                        <span className="text-emerald-500 font-black text-sm">{index + 1}</span>
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-white uppercase tracking-widest">Small Banner</h4>
+                        <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">Side Banner Configuration</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => removeBanner('smallBanners', index)} 
+                      className="p-2.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all shadow-lg border border-red-500/20 active:scale-95"
+                      title="Delete Banner"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Banner Top Text (Small)</label>
                         <input
                           type="text"
-                          className="w-full bg-[#111111] border border-white/10 focus:border-emerald-500 rounded-lg px-3 py-2 outline-none transition-all font-bold text-xs"
+                          className="w-full bg-[#111111] border border-white/10 focus:border-emerald-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white"
                           value={banner.topText}
                           onChange={(e) => updateBanner('smallBanners', index, 'topText', e.target.value)}
                         />
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Banner Title</label>
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Banner Title</label>
                         <input
                           type="text"
-                          className="w-full bg-[#111111] border border-white/10 focus:border-emerald-500 rounded-lg px-3 py-2 outline-none transition-all font-bold text-xs"
+                          className="w-full bg-[#111111] border border-white/10 focus:border-emerald-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white"
                           value={banner.title}
                           onChange={(e) => updateBanner('smallBanners', index, 'title', e.target.value)}
                         />
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Banner Subtitle</label>
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Banner Subtitle</label>
                         <textarea
-                          className="w-full bg-[#111111] border border-white/10 focus:border-emerald-500 rounded-lg px-3 py-2 outline-none transition-all font-bold text-xs h-16 resize-none"
+                          className="w-full bg-[#111111] border border-white/10 focus:border-emerald-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white h-24 resize-none"
                           value={banner.subtitle}
                           onChange={(e) => updateBanner('smallBanners', index, 'subtitle', e.target.value)}
                         />
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Banner Link</label>
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Banner Link</label>
                         <input
                           type="text"
-                          className="w-full bg-[#111111] border border-white/10 focus:border-emerald-500 rounded-lg px-3 py-2 outline-none transition-all font-bold text-xs"
+                          className="w-full bg-[#111111] border border-white/10 focus:border-emerald-500 rounded-xl px-4 py-3 outline-none transition-all font-bold text-sm text-white"
                           value={banner.link}
                           onChange={(e) => updateBanner('smallBanners', index, 'link', e.target.value)}
                         />
                       </div>
                     </div>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Banner Image</label>
-                        <button className="text-[9px] font-black text-emerald-500 uppercase">Edit Image</button>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-end">
+                        <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Banner Image</label>
+                        <div className="text-[10px] font-black text-emerald-500/80 uppercase text-right tracking-wider leading-none">
+                          Rec: 600x800px<br/>Max: 2MB
+                        </div>
                       </div>
-                      <div className="aspect-[16/9] bg-[#111111] rounded-xl border border-dashed border-white/10 flex items-center justify-center overflow-hidden relative group/img">
+                      <div className="aspect-[3/4] max-h-[300px] bg-[#111111] rounded-[24px] border-2 border-dashed border-white/10 flex items-center justify-center overflow-hidden relative group/img shadow-inner mx-auto">
                         {banner.image ? (
                           <img src={banner.image} alt="Banner" className="w-full h-full object-cover" />
                         ) : (
-                          <ImageIcon className="h-8 w-8 text-gray-800" />
+                          <ImageIcon className="h-12 w-12 text-gray-800" />
                         )}
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
-                          <label className="cursor-pointer p-2 bg-emerald-500 rounded-full text-white">
-                            <Upload className="h-4 w-4" />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
+                          <label className="cursor-pointer p-4 bg-emerald-500 rounded-2xl text-white shadow-2xl hover:scale-110 transition-transform flex items-center gap-2">
+                            <Upload className="h-5 w-5" />
+                            <span className="font-black text-xs uppercase tracking-widest">Upload Image</span>
                             <input type="file" className="hidden" accept="image/*" onChange={(e) => handleBannerUpload(index, 'smallBanners', e)} />
                           </label>
                         </div>

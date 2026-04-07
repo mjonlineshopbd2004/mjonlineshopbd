@@ -6,6 +6,7 @@ import { getProxyUrl } from '../lib/utils';
 export default function SplashScreen() {
   const { settings } = useSettings();
   const [isVisible, setIsVisible] = useState(true);
+  const [logoError, setLogoError] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -33,8 +34,13 @@ export default function SplashScreen() {
             className="flex flex-col items-center gap-6"
           >
             <div className="relative">
-              {settings.logoUrl ? (
-                <img src={getProxyUrl(settings.logoUrl)} alt={settings.storeName} className="h-24 w-auto" />
+              {settings.logoUrl && !logoError ? (
+                <img 
+                  src={getProxyUrl(settings.logoUrl)} 
+                  alt={settings.storeName} 
+                  className="h-24 w-auto" 
+                  onError={() => setLogoError(true)}
+                />
               ) : (
                 <div className="w-24 h-24 bg-primary rounded-[2rem] flex items-center justify-center text-white font-bold text-5xl shadow-2xl shadow-primary/30">
                   {settings.storeName.charAt(0)}

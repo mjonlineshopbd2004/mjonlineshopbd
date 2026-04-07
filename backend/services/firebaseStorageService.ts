@@ -22,8 +22,14 @@ export class FirebaseStorageService {
 
       // Return the public URL
       return `https://storage.googleapis.com/${bucket.name}/${destination}`;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading to Firebase Storage:', error);
+      if (error.response) {
+        console.error('Firebase Storage API Error Response:', JSON.stringify(error.response.data, null, 2));
+      }
+      if (error.code) {
+        console.error('Firebase Storage Error Code:', error.code);
+      }
       return null;
     }
   }
