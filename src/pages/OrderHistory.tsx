@@ -58,7 +58,7 @@ export default function OrderHistory() {
       if (containerRef.current) {
         const containerWidth = containerRef.current.offsetWidth;
         const baseWidth = 794;
-        const newScale = Math.min(0.8, (containerWidth - 32) / baseWidth);
+        const newScale = Math.max(0.1, Math.min(0.8, (containerWidth - 32) / baseWidth));
         setScale(newScale);
       }
     };
@@ -119,7 +119,6 @@ export default function OrderHistory() {
         toast.error('Failed to generate invoice.', { id: toastId });
       } finally {
         setIsGenerating(false);
-        setSelectedOrderForInvoice(null);
       }
     }, 100);
   };
@@ -138,17 +137,35 @@ export default function OrderHistory() {
         <html>
           <head>
             <title>Invoice - ${order.id}</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
             <script src="https://cdn.tailwindcss.com"></script>
             <style>
-              @media print {
-                body { padding: 0; margin: 0; }
-                .no-print { display: none; }
+              @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Dancing+Script:wght@700&display=swap');
+              body { 
+                margin: 0; 
+                padding: 0; 
+                background-color: #f3f4f6;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
               }
+              @media print {
+                body { background-color: white; }
+                .no-print { display: none; }
+                @page { 
+                  size: A4; 
+                  margin: 0; 
+                }
+                .no-print-bg { background-color: white !important; padding: 0 !important; }
+              }
+              * { box-sizing: border-box; }
             </style>
           </head>
-          <body onload="window.print(); window.close();">
-            <div class="p-10">
-              ${printContent}
+          <body onload="setTimeout(() => { window.print(); window.close(); }, 500);">
+            <div style="display: flex; justify-content: center; padding: 20px; background-color: #f3f4f6;" class="no-print-bg">
+              <div style="background-color: white; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+                ${printContent}
+              </div>
             </div>
           </body>
         </html>

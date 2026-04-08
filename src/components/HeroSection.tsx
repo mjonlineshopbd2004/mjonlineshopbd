@@ -129,7 +129,7 @@ export default function HeroSection() {
         </div>
 
         {/* Right Side Banner */}
-        <div className="hidden lg:flex relative overflow-hidden bg-[#fde1b6] p-8 md:p-10 flex flex-col justify-end group rounded-2xl md:rounded-none h-[250px] md:h-[500px] lg:h-full">
+        <div className="relative overflow-hidden bg-[#fde1b6] p-6 md:p-10 flex flex-col justify-end group rounded-2xl md:rounded-none h-[200px] md:h-[300px] lg:h-full">
           <div className="absolute inset-0 z-0">
             <AnimatePresence initial={false}>
               {smallBanners.length > 0 ? (

@@ -140,6 +140,7 @@ function MainLayout() {
   );
 }
 
+// Trigger rebuild
 export default function App() {
   return (
     <AuthProvider>

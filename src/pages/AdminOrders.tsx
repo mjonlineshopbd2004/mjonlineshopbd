@@ -18,6 +18,7 @@ export default function AdminOrders() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
+  const [openStatusDropdown, setOpenStatusDropdown] = useState<string | null>(null);
   const { settings } = useSettings();
   
   const invoiceRef = useRef<HTMLDivElement>(null);
@@ -32,7 +33,7 @@ export default function AdminOrders() {
       if (containerRef.current) {
         const containerWidth = containerRef.current.offsetWidth;
         const baseWidth = 794;
-        const newScale = Math.min(0.8, (containerWidth - 32) / baseWidth);
+        const newScale = Math.max(0.1, Math.min(0.8, (containerWidth - 32) / baseWidth));
         setScale(newScale);
       }
     };
@@ -109,17 +110,35 @@ export default function AdminOrders() {
         <html>
           <head>
             <title>Invoice - ${order.id}</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
             <script src="https://cdn.tailwindcss.com"></script>
             <style>
-              @media print {
-                body { padding: 0; margin: 0; }
-                .no-print { display: none; }
+              @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Dancing+Script:wght@700&display=swap');
+              body { 
+                margin: 0; 
+                padding: 0; 
+                background-color: #f3f4f6;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
               }
+              @media print {
+                body { background-color: white; }
+                .no-print { display: none; }
+                @page { 
+                  size: A4; 
+                  margin: 0; 
+                }
+                .no-print-bg { background-color: white !important; padding: 0 !important; }
+              }
+              * { box-sizing: border-box; }
             </style>
           </head>
-          <body onload="window.print(); window.close();">
-            <div class="p-10">
-              ${printContent}
+          <body onload="setTimeout(() => { window.print(); window.close(); }, 500);">
+            <div style="display: flex; justify-content: center; padding: 20px; background-color: #f3f4f6;" class="no-print-bg">
+              <div style="background-color: white; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+                ${printContent}
+              </div>
             </div>
           </body>
         </html>
@@ -286,37 +305,75 @@ export default function AdminOrders() {
                   </td>
                   <td className="px-8 py-6 font-black text-white">{formatPrice(order.total)}</td>
                   <td className="px-8 py-6">
-                    <div className="relative group inline-block">
-                      <div className={cn(
-                        "flex items-center gap-2 px-4 py-1.5 rounded-full border font-black text-[10px] uppercase tracking-widest cursor-pointer transition-all",
-                        getStatusColor(order.status)
-                      )}>
+                    <div className="relative inline-block">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenStatusDropdown(openStatusDropdown === order.id ? null : order.id);
+                        }}
+                        className={cn(
+                          "flex items-center gap-2 px-4 py-1.5 rounded-full border font-black text-[10px] uppercase tracking-widest cursor-pointer transition-all active:scale-95",
+                          getStatusColor(order.status)
+                        )}
+                      >
                         {getStatusIcon(order.status)}
                         <span>{order.status}</span>
-                        <ChevronDown className="h-3 w-3" />
-                      </div>
-                      <div className="absolute left-0 mt-2 w-48 bg-[#111111] border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                        <div className="py-2">
-                          {(['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'] as OrderStatus[]).map((status) => (
-                            <button
-                              key={status}
-                              onClick={() => handleStatusChange(order.id, status)}
-                              className="flex items-center w-full px-4 py-2 text-xs text-gray-400 hover:bg-white/5 hover:text-primary capitalize font-black transition-colors"
+                        <ChevronDown className={cn("h-3 w-3 transition-transform", openStatusDropdown === order.id && "rotate-180")} />
+                      </button>
+                      
+                      <AnimatePresence>
+                        {openStatusDropdown === order.id && (
+                          <>
+                            <div 
+                              className="fixed inset-0 z-10" 
+                              onClick={() => setOpenStatusDropdown(null)}
+                            />
+                            <motion.div 
+                              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                              className="absolute left-0 mt-2 w-48 bg-[#111111] border border-white/10 rounded-xl shadow-2xl z-20 overflow-hidden"
                             >
-                              {status}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                              <div className="py-2">
+                                {(['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'] as OrderStatus[]).map((status) => (
+                                  <button
+                                    key={status}
+                                    onClick={() => {
+                                      handleStatusChange(order.id, status);
+                                      setOpenStatusDropdown(null);
+                                    }}
+                                    className={cn(
+                                      "flex items-center w-full px-4 py-2.5 text-xs capitalize font-black transition-colors",
+                                      order.status === status ? "bg-primary/10 text-primary" : "text-gray-400 hover:bg-white/5 hover:text-white"
+                                    )}
+                                  >
+                                    {status}
+                                  </button>
+                                ))}
+                              </div>
+                            </motion.div>
+                          </>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </td>
                   <td className="px-8 py-6 text-right">
-                    <button 
-                      onClick={() => setSelectedOrder(order)}
-                      className="p-3 text-gray-500 hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
-                    >
-                      <Eye className="h-5 w-5" />
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button 
+                        onClick={() => handleViewInvoice(order)}
+                        className="p-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all border border-white/5"
+                        title="Print/Download Invoice"
+                      >
+                        <Printer className="h-4 w-4" />
+                      </button>
+                      <button 
+                        onClick={() => setSelectedOrder(order)}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-xl transition-all font-black text-[10px] uppercase tracking-widest border border-primary/20"
+                      >
+                        <Eye className="h-4 w-4" />
+                        <span>View</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

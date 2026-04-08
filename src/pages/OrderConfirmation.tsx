@@ -29,7 +29,8 @@ export default function OrderConfirmation() {
       if (containerRef.current) {
         const containerWidth = containerRef.current.offsetWidth;
         const baseWidth = 794;
-        const newScale = Math.min(0.8, (containerWidth - 32) / baseWidth);
+        // Allow smaller scale for mobile devices
+        const newScale = Math.max(0.1, Math.min(1, (containerWidth - 16) / baseWidth));
         setScale(newScale);
       }
     };
@@ -86,7 +87,7 @@ export default function OrderConfirmation() {
   const handlePrintInvoice = () => {
     if (!invoiceRef.current) return;
     
-    const printContent = invoiceRef.current.innerHTML;
+    const printContent = invoiceRef.current.outerHTML;
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
@@ -94,16 +95,29 @@ export default function OrderConfirmation() {
       <html>
         <head>
           <title>Invoice - ${order?.id}</title>
-          <script src="https://cdn.tailwindcss.com"></script>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
           <style>
-            @media print {
-              body { padding: 0; margin: 0; }
-              .no-print { display: none; }
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Dancing+Script:wght@700&display=swap');
+            body { 
+              margin: 0; 
+              padding: 0; 
+              background-color: white;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
+            @media print {
+              @page { 
+                size: A4; 
+                margin: 0; 
+              }
+              body { margin: 0; }
+            }
+            * { box-sizing: border-box; }
           </style>
         </head>
-        <body onload="window.print(); window.close();">
-          <div class="p-10">
+        <body onload="setTimeout(() => { window.print(); window.close(); }, 500);">
+          <div style="display: flex; justify-content: center;">
             ${printContent}
           </div>
         </body>
@@ -190,29 +204,29 @@ export default function OrderConfirmation() {
 
         <div className="p-8 md:p-12 space-y-12">
           {/* Order Status */}
-          <div className="flex flex-wrap justify-between gap-8 py-8 border-b border-gray-100">
-            <div className="flex items-center space-x-4">
-              <div className="bg-orange-50 p-4 rounded-2xl"><Package className="h-8 w-8 text-orange-600" /></div>
-              <div>
-                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Status</p>
-                <p className="text-xl font-bold tracking-tight text-gray-900 capitalize">{order.status}</p>
+            <div className="flex flex-wrap justify-between gap-4 py-6 border-b border-gray-100">
+              <div className="flex items-center space-x-3 min-w-[140px]">
+                <div className="bg-orange-50 p-3 rounded-xl"><Package className="h-6 w-6 text-orange-600" /></div>
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</p>
+                  <p className="text-lg font-bold tracking-tight text-gray-900 capitalize">{order.status}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3 min-w-[140px]">
+                <div className="bg-orange-50 p-3 rounded-xl"><Truck className="h-6 w-6 text-orange-600" /></div>
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Delivery</p>
+                  <p className="text-lg font-bold tracking-tight text-gray-900 capitalize">{order.deliveryArea.replace('-', ' ')}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3 min-w-[140px]">
+                <div className="bg-orange-50 p-3 rounded-xl"><ShoppingBag className="h-6 w-6 text-orange-600" /></div>
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total</p>
+                  <p className="text-lg font-bold tracking-tight text-gray-900">{formatPrice(order.total)}</p>
+                </div>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="bg-orange-50 p-4 rounded-2xl"><Truck className="h-8 w-8 text-orange-600" /></div>
-              <div>
-                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Delivery</p>
-                <p className="text-xl font-bold tracking-tight text-gray-900 capitalize">{order.deliveryArea.replace('-', ' ')}</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="bg-orange-50 p-4 rounded-2xl"><ShoppingBag className="h-8 w-8 text-orange-600" /></div>
-              <div>
-                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Total Amount</p>
-                <p className="text-xl font-bold tracking-tight text-gray-900">{formatPrice(order.total)}</p>
-              </div>
-            </div>
-          </div>
 
           {/* Customer Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
@@ -253,19 +267,19 @@ export default function OrderConfirmation() {
             <h3 className="text-xl font-bold tracking-tight text-gray-900">Order Items</h3>
             <div className="space-y-4">
               {order.items.map((item, idx) => (
-                <div key={idx} className="flex items-center space-x-6 bg-white border border-gray-100 p-4 rounded-2xl">
-                  <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0">
+                <div key={idx} className="flex items-center space-x-4 bg-white border border-gray-100 p-3 sm:p-4 rounded-2xl">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0">
                     <img src={getProxyUrl(item.images[0])} alt="" className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-gray-900 truncate">{item.name}</p>
-                    <p className="text-sm text-gray-500 font-bold">
+                    <p className="font-bold text-gray-900 truncate text-sm sm:text-base">{item.name}</p>
+                    <p className="text-[10px] sm:text-sm text-gray-500 font-bold">
                       {item.selectedSize && `Size: ${item.selectedSize}`} 
                       {item.selectedColor && ` | Color: ${item.selectedColor}`}
                     </p>
-                    <p className="text-sm text-orange-600 font-bold">Qty: {item.quantity} × {formatPrice(item.discountPrice || item.price)}</p>
+                    <p className="text-[10px] sm:text-sm text-orange-600 font-bold">Qty: {item.quantity} × {formatPrice(item.discountPrice || item.price)}</p>
                   </div>
-                  <p className="font-bold text-gray-900">{formatPrice((item.discountPrice || item.price) * item.quantity)}</p>
+                  <p className="font-bold text-gray-900 text-sm sm:text-base">{formatPrice((item.discountPrice || item.price) * item.quantity)}</p>
                 </div>
               ))}
             </div>

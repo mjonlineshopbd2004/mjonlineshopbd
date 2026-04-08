@@ -32,8 +32,10 @@ export const Invoice = React.forwardRef<HTMLDivElement, InvoiceProps>(({ order, 
 
   const styles = {
     container: {
-      width: '794px', // Standard A4 width at 96dpi
-      height: '1123px', // Standard A4 height at 96dpi
+      width: '210mm', // Exact A4 width
+      minWidth: '210mm',
+      height: '297mm', // Exact A4 height
+      minHeight: '297mm',
       margin: '0 auto',
       position: 'relative' as const,
       overflow: 'hidden' as const,
@@ -41,6 +43,11 @@ export const Invoice = React.forwardRef<HTMLDivElement, InvoiceProps>(({ order, 
       color: colors.gray900,
       fontFamily: "'Inter', sans-serif",
       boxSizing: 'border-box' as const,
+      display: 'flex',
+      flexDirection: 'column' as const,
+      WebkitPrintColorAdjust: 'exact' as any,
+      printColorAdjust: 'exact' as any,
+      padding: '0',
     },
     watermark: {
       position: 'absolute' as const,
@@ -61,6 +68,7 @@ export const Invoice = React.forwardRef<HTMLDivElement, InvoiceProps>(({ order, 
       justifyContent: 'space-between',
       alignItems: 'flex-start',
       position: 'relative' as const,
+      flexShrink: 0,
     },
     headerCurve: {
       position: 'absolute' as const,
@@ -71,9 +79,12 @@ export const Invoice = React.forwardRef<HTMLDivElement, InvoiceProps>(({ order, 
       zIndex: 1,
     },
     content: {
-      padding: '25px 40px',
+      padding: '30px 40px',
       position: 'relative' as const,
       zIndex: 10,
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column' as const,
     },
     addressSection: {
       display: 'grid',
@@ -96,30 +107,31 @@ export const Invoice = React.forwardRef<HTMLDivElement, InvoiceProps>(({ order, 
       marginBottom: '20px',
     },
     th: {
-      padding: '12px 15px',
+      padding: '10px 15px',
       fontSize: '12px',
       fontWeight: '900',
       textAlign: 'left' as const,
-      backgroundColor: colors.navy,
+      backgroundColor: colors.accent,
       color: colors.white,
-      borderRight: '1px solid rgba(255,255,255,0.1)',
+      borderRight: `1px solid ${colors.white}`,
       textTransform: 'uppercase' as const,
       letterSpacing: '0.05em',
     },
     td: {
-      padding: '12px 15px',
+      padding: '10px 15px',
       fontSize: '13px',
       color: colors.gray900,
-      borderBottom: `1px solid ${colors.gray100}`,
+      borderRight: `1px solid ${colors.gray200}`,
       verticalAlign: 'middle' as const,
       fontWeight: '500',
+      height: '35px',
     },
     summaryContainer: {
       display: 'flex',
       flexDirection: 'column' as const,
       alignItems: 'flex-end',
       gap: '2px',
-      marginBottom: '15px',
+      marginBottom: '20px',
     },
     summaryRow: {
       display: 'flex',
@@ -140,25 +152,20 @@ export const Invoice = React.forwardRef<HTMLDivElement, InvoiceProps>(({ order, 
       marginTop: '4px',
     },
     footer: {
-      position: 'absolute' as const,
-      bottom: 0,
-      left: 0,
-      right: 0,
-      padding: '12px 40px',
+      padding: '20px 40px',
       borderTop: `1px solid ${colors.gray200}`,
       display: 'flex',
       justifyContent: 'space-between',
-      fontSize: '9px',
+      fontSize: '10px',
       fontWeight: '600',
       color: colors.gray500,
       backgroundColor: colors.white,
+      flexShrink: 0,
     },
     bottomSection: {
-      position: 'absolute' as const,
-      bottom: '60px',
-      left: '40px',
-      right: '40px',
-      paddingTop: '20px',
+      marginTop: 'auto',
+      paddingTop: '40px',
+      paddingBottom: '40px',
       borderTop: `1px solid ${colors.gray100}`,
     }
   };
@@ -261,39 +268,39 @@ export const Invoice = React.forwardRef<HTMLDivElement, InvoiceProps>(({ order, 
         </div>
 
         {/* Items Table */}
-        <table style={styles.table}>
+        <table style={{ ...styles.table, border: `1px solid ${colors.gray200}` }}>
           <thead>
             <tr>
               <th style={{ ...styles.th, width: '40px', textAlign: 'center' }}>No.</th>
               <th style={{ ...styles.th, width: '60px', textAlign: 'center' }}>Image</th>
               <th style={styles.th}>Description</th>
-              <th style={{ ...styles.th, width: '80px', textAlign: 'center' }}>Qty</th>
-              <th style={{ ...styles.th, width: '110px', textAlign: 'right' }}>Unit Price</th>
-              <th style={{ ...styles.th, width: '110px', textAlign: 'right', borderRight: 'none' }}>Total</th>
+              <th style={{ ...styles.th, width: '60px', textAlign: 'center' }}>Qty</th>
+              <th style={{ ...styles.th, width: '100px', textAlign: 'right' }}>Unit Price</th>
+              <th style={{ ...styles.th, width: '100px', textAlign: 'right', borderRight: 'none' }}>Total</th>
             </tr>
           </thead>
           <tbody>
             {order.items.map((item, idx) => (
-              <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? colors.white : colors.rowBlue }}>
+              <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? colors.white : '#fdf2f0' }}>
                 <td style={{ ...styles.td, textAlign: 'center', color: colors.gray500, fontWeight: '700' }}>{idx + 1}</td>
                 <td style={{ ...styles.td, textAlign: 'center' }}>
                   <img 
-                    src={getProxyUrl(item.image)} 
+                    src={getProxyUrl(item.images[0])} 
                     alt="" 
-                    style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: `1px solid ${colors.gray200}` }}
+                    style={{ width: '35px', height: '35px', objectFit: 'cover', borderRadius: '4px', border: `1px solid ${colors.gray200}` }}
                     referrerPolicy="no-referrer"
                   />
                 </td>
                 <td style={styles.td}>
-                  <p style={{ fontWeight: '900', margin: 0, color: colors.navy, fontSize: '14px' }}>{item.name}</p>
-                  <p style={{ fontSize: '11px', color: colors.gray600, margin: '4px 0 0 0', fontWeight: '700' }}>
+                  <p style={{ fontWeight: '800', margin: 0, color: colors.navy, fontSize: '13px' }}>{item.name}</p>
+                  <p style={{ fontSize: '10px', color: colors.gray600, margin: '2px 0 0 0', fontWeight: '700' }}>
                     {item.selectedSize && `Size: ${item.selectedSize}`}
                     {item.selectedColor && ` | Color: ${item.selectedColor}`}
                   </p>
                 </td>
                 <td style={{ ...styles.td, textAlign: 'center', fontWeight: '700' }}>{item.quantity}</td>
                 <td style={{ ...styles.td, textAlign: 'right', fontWeight: '700' }}>{formatPrice(item.discountPrice || item.price)}</td>
-                <td style={{ ...styles.td, textAlign: 'right', fontWeight: '800', color: colors.navy }}>{formatPrice((item.discountPrice || item.price) * item.quantity)}</td>
+                <td style={{ ...styles.td, textAlign: 'right', fontWeight: '800', color: colors.navy, borderRight: 'none' }}>{formatPrice((item.discountPrice || item.price) * item.quantity)}</td>
               </tr>
             ))}
           </tbody>
@@ -343,23 +350,40 @@ export const Invoice = React.forwardRef<HTMLDivElement, InvoiceProps>(({ order, 
               <p style={{ fontSize: '8px', fontWeight: '800', color: colors.gray500, marginTop: '6px', textTransform: 'uppercase' }}>Scan to Verify</p>
             </div>
 
-            <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center' }}>
-              <div style={{ width: '100%', borderBottom: `1.5px solid ${colors.navy}`, marginBottom: '6px', paddingBottom: '2px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                {/* Signature Image Placeholder - Replace src with your actual signature image URL */}
-                <img 
-                  src="https://i.ibb.co/LzNf0Yv/mamun-signature.png" 
-                  alt="Mamun" 
-                  style={{ height: '50px', width: 'auto', marginBottom: '-5px' }}
-                  onError={(e) => {
-                    // Fallback to text if image fails
-                    (e.target as HTMLImageElement).style.display = 'none';
-                    const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
-                    if (fallback) fallback.style.display = 'block';
-                  }}
-                />
-                <p style={{ fontFamily: "'Dancing Script', cursive", fontSize: '28px', color: colors.navy, margin: 0, display: 'none' }}>Mamun</p>
+            <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center', minHeight: '110px', position: 'relative' }}>
+              <div style={{ width: '100%', marginBottom: '8px', paddingBottom: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '80px', justifyContent: 'flex-end', position: 'relative' }}>
+                {/* Signature Text - Reduced size */}
+                <p style={{ 
+                  fontFamily: "'Dancing Script', cursive", 
+                  fontSize: '42px', 
+                  color: colors.navy, 
+                  margin: '0 0 -2px 0', 
+                  lineHeight: 1,
+                  fontWeight: '700',
+                  letterSpacing: '-0.5px',
+                  zIndex: 2,
+                  transform: 'rotate(-1deg)'
+                }}>Mamun</p>
+                
+                {/* Leaf Underline Decoration (SVG) - Reduced size */}
+                <div style={{ position: 'absolute', bottom: '0px', width: '160px', height: '36px', pointerEvents: 'none' }}>
+                  <svg viewBox="0 0 200 60" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                    {/* Main Underline Path */}
+                    <path d="M10 50C60 48 110 48 160 50" stroke={colors.navy} strokeWidth="2.5" strokeLinecap="round" />
+                    
+                    {/* Leaf 1 (Bottom) */}
+                    <path d="M160 50C175 42 195 42 205 50C195 58 175 58 160 50Z" fill={colors.navy} />
+                    <path d="M165 50C175 46 185 46 195 50" stroke="white" strokeWidth="0.6" opacity="0.3" />
+                    
+                    {/* Leaf 2 (Top) */}
+                    <path d="M170 45C182 30 198 28 208 38C198 48 182 52 170 45Z" fill={colors.navy} />
+                    <path d="M175 43C185 38 195 38 202 42" stroke="white" strokeWidth="0.6" opacity="0.3" />
+                  </svg>
+                </div>
               </div>
-              <p style={{ fontSize: '9px', fontWeight: '800', textTransform: 'uppercase', color: colors.gray500, margin: 0, letterSpacing: '0.05em' }}>Authorized Signature</p>
+              {/* Standard line for the signature area */}
+              <div style={{ width: '100%', borderBottom: `1px solid ${colors.gray200}`, marginBottom: '6px' }}></div>
+              <p style={{ fontSize: '10px', fontWeight: '800', textTransform: 'uppercase', color: colors.gray500, margin: 0, letterSpacing: '0.05em' }}>Authorized Signature</p>
             </div>
           </div>
         </div>
