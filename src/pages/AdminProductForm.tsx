@@ -4,7 +4,7 @@ import { doc, getDoc, addDoc, collection, updateDoc, getDocFromServer } from 'fi
 import { db } from '../lib/firebase';
 import { Product } from '../types';
 import { toast } from 'sonner';
-import { ArrowLeft, Save, Image as ImageIcon, Plus, X, Loader2, Upload, Video, Trash2, DollarSign, Settings, Globe, Search } from 'lucide-react';
+import { ArrowLeft, Save, Image as ImageIcon, Plus, X, Loader2, Upload, Video, Trash2, DollarSign, Settings, Globe, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn, getProxyUrl } from '../lib/utils';
 import { uploadFile, uploadMultipleFiles } from '../lib/upload';
 import { useAuth } from '../contexts/AuthContext';
@@ -156,6 +156,7 @@ export default function AdminProductForm() {
 
       const response = await fetch('/api/scraper/product', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${idToken}`,
@@ -203,6 +204,35 @@ export default function AdminProductForm() {
         });
       }
 
+      // Clean and separate sizes/colors
+      let cleanedSizes = [...(data.sizes || [])];
+      let cleanedColors = [...(data.colors || [])];
+      
+      // Move numeric values from colors to sizes
+      const numericColors = cleanedColors.filter(c => /^\d+$/.test(c));
+      if (numericColors.length > 0) {
+        cleanedSizes = [...new Set([...cleanedSizes, ...numericColors])];
+        cleanedColors = cleanedColors.filter(c => !/^\d+$/.test(c));
+      }
+
+      // Handle combined strings like "Magenta38"
+      cleanedColors = cleanedColors.map(c => {
+        const match = c.match(/^([a-zA-Z]+)(\d+)$/);
+        if (match) {
+          const colorName = match[1];
+          const sizeValue = match[2];
+          if (!cleanedSizes.includes(sizeValue)) {
+            cleanedSizes.push(sizeValue);
+          }
+          return colorName;
+        }
+        return c;
+      });
+      
+      // Remove duplicates
+      cleanedColors = [...new Set(cleanedColors)];
+      cleanedSizes = [...new Set(cleanedSizes)];
+
       setFormData(prev => ({
         ...prev,
         name: data.name || prev.name,
@@ -210,8 +240,8 @@ export default function AdminProductForm() {
         description: data.description || prev.description,
         images: data.images && data.images.length > 0 ? data.images : prev.images,
         sourceUrl: data.sourceUrl || prev.sourceUrl,
-        sizes: data.sizes && data.sizes.length > 0 ? data.sizes : prev.sizes,
-        colors: data.colors && data.colors.length > 0 ? data.colors : prev.colors,
+        sizes: cleanedSizes.length > 0 ? cleanedSizes : prev.sizes,
+        colors: cleanedColors.length > 0 ? cleanedColors : prev.colors,
         colorVariants: data.colorVariants && data.colorVariants.length > 0 ? data.colorVariants : prev.colorVariants,
         category: data.category || prev.category,
         videoUrl: data.videoUrl || prev.videoUrl,
@@ -232,6 +262,21 @@ export default function AdminProductForm() {
       ...prev,
       images: prev.images?.filter((_, i) => i !== index)
     }));
+  };
+
+  const moveImage = (index: number, direction: 'left' | 'right') => {
+    setFormData(prev => {
+      const newImages = [...(prev.images || [])];
+      const newIndex = direction === 'left' ? index - 1 : index + 1;
+      
+      if (newIndex < 0 || newIndex >= newImages.length) return prev;
+      
+      const temp = newImages[index];
+      newImages[index] = newImages[newIndex];
+      newImages[newIndex] = temp;
+      
+      return { ...prev, images: newImages };
+    });
   };
 
   const removeVideo = () => {
@@ -385,6 +430,7 @@ export default function AdminProductForm() {
       if (isEditing && id) {
         const response = await fetch(`/api/products/${id}`, {
           method: 'PUT',
+          credentials: 'same-origin',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${idToken}`
@@ -412,6 +458,7 @@ export default function AdminProductForm() {
       } else {
         const response = await fetch('/api/products', {
           method: 'POST',
+          credentials: 'same-origin',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${idToken}`
@@ -585,8 +632,11 @@ export default function AdminProductForm() {
                   type="number"
                   required
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-6 py-4 focus:outline-none focus:border-primary transition-all font-bold text-white"
-                  value={formData.stock ?? 0}
-                  onChange={(e) => setFormData({ ...formData, stock: Number(e.target.value) })}
+                  value={formData.stock || ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData({ ...formData, stock: val === '' ? 0 : Number(val) });
+                  }}
                 />
               </div>
             </div>
@@ -604,8 +654,11 @@ export default function AdminProductForm() {
                   type="number"
                   required
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-6 py-4 focus:outline-none focus:border-primary transition-all font-bold text-white"
-                  value={formData.price ?? 0}
-                  onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
+                  value={formData.price || ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData({ ...formData, price: val === '' ? 0 : Number(val) });
+                  }}
                 />
               </div>
               <div className="space-y-2">
@@ -613,8 +666,11 @@ export default function AdminProductForm() {
                 <input
                   type="number"
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-6 py-4 focus:outline-none focus:border-primary transition-all font-bold text-white"
-                  value={formData.discountPrice ?? ''}
-                  onChange={(e) => setFormData({ ...formData, discountPrice: e.target.value ? Number(e.target.value) : null })}
+                  value={formData.discountPrice || ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData({ ...formData, discountPrice: val === '' ? null : Number(val) });
+                  }}
                 />
               </div>
             </div>
@@ -688,6 +744,11 @@ export default function AdminProductForm() {
                         value={color || ''}
                         onChange={(e) => updateColor(idx, e.target.value)}
                       />
+                      {formData.colorVariants?.find(v => v.name.toLowerCase() === color.toLowerCase()) && (
+                        <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-black flex items-center justify-center" title="Has variant image">
+                          <ImageIcon className="w-1.5 h-1.5 text-white" />
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={() => removeColor(idx)}
@@ -763,7 +824,17 @@ export default function AdminProductForm() {
                                 variant.image === img ? "border-primary" : "border-transparent opacity-50"
                               )}
                             >
-                              <img src={getProxyUrl(img)} className="w-full h-full object-cover" />
+                              {getProxyUrl(img) ? (
+                                <img 
+                                  src={getProxyUrl(img)!} 
+                                  className="w-full h-full object-cover" 
+                                  referrerPolicy="no-referrer"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-white/5">
+                                  <ImageIcon className="h-4 w-4 text-gray-700" />
+                                </div>
+                              )}
                             </button>
                           ))}
                         </div>
@@ -856,14 +927,53 @@ export default function AdminProductForm() {
             <div className="grid grid-cols-2 gap-4">
               {formData.images?.map((img, idx) => (
                 <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden border border-white/10 group">
-                  <img src={getProxyUrl(img)} alt="" className="w-full h-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => removeImage(idx)}
-                    className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  {getProxyUrl(img) ? (
+                    <img 
+                      src={getProxyUrl(img)!} 
+                      alt="" 
+                      className="w-full h-full object-cover" 
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-white/5">
+                      <ImageIcon className="h-8 w-8 text-gray-700" />
+                    </div>
+                  )}
+                  
+                  {/* Image Controls Overlay */}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex flex-col justify-between p-2">
+                    <div className="flex justify-between items-start">
+                      <span className="bg-black/60 text-white text-[10px] font-black px-2 py-1 rounded-md">
+                        #{idx + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeImage(idx)}
+                        className="p-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    
+                    <div className="flex justify-center gap-2">
+                      <button
+                        type="button"
+                        disabled={idx === 0}
+                        onClick={() => moveImage(idx, 'left')}
+                        className="p-1.5 bg-white/20 text-white rounded-lg hover:bg-white/40 disabled:opacity-30 disabled:hover:bg-white/20 transition-all"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={idx === (formData.images?.length || 0) - 1}
+                        onClick={() => moveImage(idx, 'right')}
+                        className="p-1.5 bg-white/20 text-white rounded-lg hover:bg-white/40 disabled:opacity-30 disabled:hover:bg-white/20 transition-all"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ))}
               {(formData.images?.length || 0) < 10 && (
@@ -935,9 +1045,9 @@ export default function AdminProductForm() {
                 />
               </div>
 
-              {formData.videoUrl ? (
+              {formData.videoUrl && getProxyUrl(formData.videoUrl) ? (
               <div className="relative aspect-video rounded-2xl overflow-hidden border border-white/10 group">
-                <video src={getProxyUrl(formData.videoUrl)} className="w-full h-full object-cover" controls />
+                <video src={getProxyUrl(formData.videoUrl)!} className="w-full h-full object-cover" controls />
                 <button
                   type="button"
                   onClick={removeVideo}

@@ -43,9 +43,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   return (
     <Link
       to={`/product/${product.id}`}
-      className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col h-full"
+      className="group bg-white rounded-xl md:rounded-2xl overflow-hidden shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all duration-500 border border-gray-100/50 flex flex-col h-full"
     >
-      <div className="relative aspect-square overflow-hidden">
+      <div className="relative aspect-square overflow-hidden bg-gray-50">
         <img
           src={getProxyUrl(product.images[0])}
           alt={product.name}
@@ -53,101 +53,67 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           referrerPolicy="no-referrer"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
-            if (!target.src.includes('picsum.photos')) {
-              target.src = `https://picsum.photos/seed/${product.id}/600/800`;
+            target.style.display = 'none';
+            const parent = target.parentElement;
+            if (parent && !parent.querySelector('.no-image-placeholder')) {
+              const placeholder = document.createElement('div');
+              placeholder.className = 'no-image-placeholder w-full h-full flex flex-col items-center justify-center bg-gray-100 text-gray-400';
+              placeholder.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image-off h-8 w-8 mb-2"><line x1="2" x2="22" y1="2" y2="22"/><path d="M10.41 10.41a2 2 0 1 1-2.82-2.82"/><line x1="10" x2="21" y1="15" y2="15"/><path d="M21 8v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/><path d="m3 16 5-5 3 3"/></svg><span class="text-[10px] font-bold uppercase tracking-widest">No Image</span>';
+              parent.appendChild(placeholder);
             }
           }}
         />
         
         {/* Badges */}
-        <div className="absolute top-2 left-2 flex flex-col gap-2">
+        <div className="absolute top-2 left-2 flex flex-col gap-1">
           {discount > 0 && (
-            <div className="bg-[#ff3b3b] text-white text-[11px] font-black px-2.5 py-1.5 rounded-xl shadow-lg flex items-center justify-center min-w-[45px]">
+            <div className="bg-[#ff3b3b] text-white text-[9px] font-black px-1.5 py-0.5 rounded-lg shadow-md flex items-center justify-center min-w-[32px]">
               -{discount}%
             </div>
           )}
-          {product.featured && (
-            <span className="bg-orange-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg uppercase tracking-wider">
-              Featured
-            </span>
-          )}
         </div>
 
-        {/* Quick Actions */}
-        <div className="absolute bottom-4 left-0 right-0 px-3 translate-y-12 group-hover:translate-y-0 transition-transform duration-300 flex gap-2">
-          <button
-            onClick={handleAddToCart}
-            className="flex-1 bg-white text-gray-900 py-2.5 rounded-xl font-bold shadow-lg flex items-center justify-center hover:bg-orange-50 transition-colors border border-gray-100"
-            title="Add to Cart"
-          >
-            <ShoppingCart className="h-4 w-4" />
-          </button>
-          <button
-            onClick={handleBuyNow}
-            className="flex-1 bg-orange-600 text-white py-2.5 rounded-xl font-bold shadow-lg flex items-center justify-center hover:bg-orange-700 transition-colors"
-            title="Buy Now"
-          >
-            <ShoppingBag className="h-4 w-4" />
-          </button>
-          <button
-            onClick={handleWishlist}
-            className={cn(
-              "flex-1 py-2.5 rounded-xl shadow-lg flex items-center justify-center transition-all",
-              isInWishlist(product.id) ? "bg-red-500 text-white" : "bg-white text-gray-700 hover:text-red-500 border border-gray-100"
-            )}
-            title="Wishlist"
-          >
-            <Heart className={cn("h-4 w-4", isInWishlist(product.id) && "fill-current")} />
-          </button>
-        </div>
-
+        {/* Wishlist Button */}
         <button
           onClick={handleWishlist}
           className={cn(
-            "absolute top-2 right-2 p-2 rounded-full shadow-md transition-all bg-white/80 backdrop-blur-sm",
-            isInWishlist(product.id) ? "bg-red-500 text-white" : "bg-white text-gray-400 hover:text-red-500"
+            "absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full shadow-md transition-all duration-300 z-10 bg-white",
+            isInWishlist(product.id) ? "opacity-100" : "opacity-0 group-hover:opacity-100"
           )}
         >
-          <Heart className={cn("h-4 w-4", isInWishlist(product.id) && "fill-current")} />
+          <Heart className={cn("h-4 w-4", isInWishlist(product.id) ? "fill-red-500 text-red-500" : "text-gray-400")} />
         </button>
+
+        {/* Quick Actions Removed as requested */}
       </div>
 
       <div className="p-3 flex flex-col flex-1">
-        <p className="text-[9px] font-black text-[#9c27b0] uppercase tracking-widest mb-1 font-sans">{product.category}</p>
-        <h3 className="text-gray-900 font-bold text-sm line-clamp-2 mb-1 group-hover:text-[#9c27b0] transition-colors font-display tracking-tight leading-tight min-h-[2.5rem]">
+        <p className="text-[8px] md:text-[9px] font-black text-primary uppercase tracking-wider mb-1 font-sans">
+          {product.category}
+        </p>
+        <h3 className="text-gray-900 font-bold text-xs md:text-sm line-clamp-2 mb-2 group-hover:text-primary transition-colors font-display tracking-tight leading-tight min-h-[2.5rem]">
           {product.name}
         </h3>
         
-        <div className="flex items-center space-x-1 mb-2">
-          <div className="flex text-yellow-400">
-            {[...Array(5)].map((_, i) => (
-              <Star key={i} className={cn("h-2.5 w-2.5 fill-current", i >= Math.floor(product.rating) && "text-gray-200")} />
-            ))}
+        <div className="mt-auto">
+          <div className="flex items-center space-x-1 mb-2">
+            <div className="flex text-yellow-400">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} className={cn("h-2.5 w-2.5 fill-current", i >= Math.floor(product.rating) && "text-gray-200")} />
+              ))}
+            </div>
+            <span className="text-[10px] font-bold text-gray-400 font-sans">({product.reviewsCount})</span>
           </div>
-          <span className="text-[10px] font-bold text-gray-400 font-sans">({product.reviewsCount})</span>
-        </div>
-
-        <div className="mt-auto pt-2">
-          <div className="flex items-baseline gap-2 mb-2">
-            <span className="text-lg font-black text-[#9c27b0] font-display">
+ 
+          <div className="flex items-baseline gap-2">
+            <span className="text-base md:text-xl font-black text-primary font-display">
               ৳ {formatPrice(product.discountPrice || product.price).replace(/[^0-9.]/g, '')}
             </span>
             {product.discountPrice && (
-              <span className="text-xs text-gray-400 line-through font-medium font-sans">
+              <span className="text-[10px] md:text-xs text-gray-400 line-through font-medium font-sans">
                 ৳ {formatPrice(product.price).replace(/[^0-9.]/g, '')}
               </span>
             )}
-          </div>
-          
-          <div className="space-y-1">
-            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-[#9c27b0] rounded-full" style={{ width: '75%' }}></div>
-            </div>
-            <div className="flex justify-end">
-              <p className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">
-                {Math.floor(Math.random() * 5000) + 1000} SOLD
-              </p>
-            </div>
           </div>
         </div>
       </div>

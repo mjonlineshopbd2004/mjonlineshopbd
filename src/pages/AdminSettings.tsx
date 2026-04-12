@@ -26,7 +26,7 @@ import {
   Share2
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from '../lib/utils';
+import { formatPrice, cn, getProxyUrl } from '../lib/utils';
 import { uploadFile } from '../lib/upload';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, getDocs, deleteDoc, doc, writeBatch } from 'firebase/firestore';
@@ -303,8 +303,13 @@ export default function AdminSettings() {
               <label className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Store Logo</label>
               <div className="flex items-center space-x-6 bg-[#1a1a1a] p-4 rounded-2xl border border-white/10">
                 <div className="w-16 h-16 rounded-2xl bg-[#111111] border-2 border-dashed border-white/10 flex items-center justify-center overflow-hidden relative group shrink-0">
-                  {formData.logoUrl ? (
-                    <img src={formData.logoUrl} alt="Logo" className="w-full h-full object-contain p-2" />
+                  {formData.logoUrl && getProxyUrl(formData.logoUrl) ? (
+                    <img 
+                      src={getProxyUrl(formData.logoUrl)!} 
+                      alt="Logo" 
+                      className="w-full h-full object-contain p-2" 
+                      referrerPolicy="no-referrer"
+                    />
                   ) : (
                     <ImageIcon className="h-6 w-6 text-gray-800" />
                   )}
@@ -505,6 +510,7 @@ export default function AdminSettings() {
                     try {
                       const idToken = await user?.getIdToken();
                       const response = await fetch('/api/scraper/status', {
+                        credentials: 'same-origin',
                         headers: { 'Authorization': `Bearer ${idToken}` }
                       });
                       const data = await response.json();
@@ -567,7 +573,18 @@ export default function AdminSettings() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-pink-500/10 rounded-xl flex items-center justify-center overflow-hidden relative group">
-                    <img src={formData.bkashLogo} className="w-full h-full object-contain p-1" alt="bKash" />
+                    {getProxyUrl(formData.bkashLogo) ? (
+                      <img 
+                        src={getProxyUrl(formData.bkashLogo)!} 
+                        className="w-full h-full object-contain p-1" 
+                        alt="bKash" 
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-pink-500/30">
+                        <ImageIcon className="h-5 w-5" />
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <label className="cursor-pointer p-1 bg-pink-500 rounded-lg text-white">
                         <Upload className="h-3 w-3" />
@@ -618,7 +635,18 @@ export default function AdminSettings() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center overflow-hidden relative group">
-                    <img src={formData.nagadLogo} className="w-full h-full object-contain p-1" alt="Nagad" />
+                    {getProxyUrl(formData.nagadLogo) ? (
+                      <img 
+                        src={getProxyUrl(formData.nagadLogo)!} 
+                        className="w-full h-full object-contain p-1" 
+                        alt="Nagad" 
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-orange-500/30">
+                        <ImageIcon className="h-5 w-5" />
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <label className="cursor-pointer p-1 bg-orange-500 rounded-lg text-white">
                         <Upload className="h-3 w-3" />
@@ -669,7 +697,18 @@ export default function AdminSettings() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center overflow-hidden relative group">
-                    <img src={formData.rocketLogo} className="w-full h-full object-contain p-1" alt="Rocket" />
+                    {getProxyUrl(formData.rocketLogo) ? (
+                      <img 
+                        src={getProxyUrl(formData.rocketLogo)!} 
+                        className="w-full h-full object-contain p-1" 
+                        alt="Rocket" 
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-purple-500/30">
+                        <ImageIcon className="h-5 w-5" />
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <label className="cursor-pointer p-1 bg-purple-500 rounded-lg text-white">
                         <Upload className="h-3 w-3" />
@@ -720,7 +759,18 @@ export default function AdminSettings() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center overflow-hidden relative group">
-                    <img src={formData.upayLogo} className="w-full h-full object-contain p-1" alt="Upay" />
+                    {getProxyUrl(formData.upayLogo) ? (
+                      <img 
+                        src={getProxyUrl(formData.upayLogo)!} 
+                        className="w-full h-full object-contain p-1" 
+                        alt="Upay" 
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-blue-500/30">
+                        <ImageIcon className="h-5 w-5" />
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <label className="cursor-pointer p-1 bg-blue-500 rounded-lg text-white">
                         <Upload className="h-3 w-3" />
@@ -771,7 +821,18 @@ export default function AdminSettings() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-blue-900/10 rounded-xl flex items-center justify-center overflow-hidden relative group">
-                    <img src={formData.visaLogo} className="w-full h-full object-contain p-1" alt="Visa" />
+                    {getProxyUrl(formData.visaLogo) ? (
+                      <img 
+                        src={getProxyUrl(formData.visaLogo)!} 
+                        className="w-full h-full object-contain p-1" 
+                        alt="Visa" 
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-blue-900/30">
+                        <ImageIcon className="h-5 w-5" />
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <label className="cursor-pointer p-1 bg-blue-900 rounded-lg text-white">
                         <Upload className="h-3 w-3" />
@@ -810,7 +871,18 @@ export default function AdminSettings() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center overflow-hidden relative group">
-                    <img src={formData.mastercardLogo} className="w-full h-full object-contain p-1" alt="Mastercard" />
+                    {getProxyUrl(formData.mastercardLogo) ? (
+                      <img 
+                        src={getProxyUrl(formData.mastercardLogo)!} 
+                        className="w-full h-full object-contain p-1" 
+                        alt="Mastercard" 
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-red-500/30">
+                        <ImageIcon className="h-5 w-5" />
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <label className="cursor-pointer p-1 bg-red-500 rounded-lg text-white">
                         <Upload className="h-3 w-3" />
@@ -874,7 +946,12 @@ export default function AdminSettings() {
                   <div className="flex items-center space-x-4 mb-6">
                     <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center overflow-hidden relative group/banklogo">
                       {bank.logo ? (
-                        <img src={bank.logo} alt={bank.name} className="w-full h-full object-contain p-2" />
+                        <img 
+                          src={getProxyUrl(bank.logo)} 
+                          alt={bank.name} 
+                          className="w-full h-full object-contain p-2" 
+                          referrerPolicy="no-referrer"
+                        />
                       ) : (
                         <Globe className="h-6 w-6 text-gray-700" />
                       )}
@@ -1059,8 +1136,13 @@ export default function AdminSettings() {
                         </div>
                       </div>
                       <div className="aspect-video bg-[#111111] rounded-[24px] border-2 border-dashed border-white/10 flex items-center justify-center overflow-hidden relative group/img shadow-inner">
-                        {banner.image ? (
-                          <img src={banner.image} alt="Banner" className="w-full h-full object-cover" />
+                        {banner.image && getProxyUrl(banner.image) ? (
+                          <img 
+                            src={getProxyUrl(banner.image)!} 
+                            alt="Banner" 
+                            className="w-full h-full object-cover" 
+                            referrerPolicy="no-referrer"
+                          />
                         ) : (
                           <ImageIcon className="h-12 w-12 text-gray-800" />
                         )}
@@ -1152,8 +1234,13 @@ export default function AdminSettings() {
                         </div>
                       </div>
                       <div className="aspect-[3/4] max-h-[300px] bg-[#111111] rounded-[24px] border-2 border-dashed border-white/10 flex items-center justify-center overflow-hidden relative group/img shadow-inner mx-auto">
-                        {banner.image ? (
-                          <img src={banner.image} alt="Banner" className="w-full h-full object-cover" />
+                        {banner.image && getProxyUrl(banner.image) ? (
+                          <img 
+                            src={getProxyUrl(banner.image)!} 
+                            alt="Banner" 
+                            className="w-full h-full object-cover" 
+                            referrerPolicy="no-referrer"
+                          />
                         ) : (
                           <ImageIcon className="h-12 w-12 text-gray-800" />
                         )}

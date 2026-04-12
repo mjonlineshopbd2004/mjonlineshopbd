@@ -4,10 +4,11 @@ import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { formatPrice, getProxyUrl } from '../lib/utils';
-import { DELIVERY_AREAS, PAYMENT_METHODS } from '../constants';
+import { DELIVERY_AREAS, PAYMENT_METHODS, BANGLADESH_DISTRICTS } from '../constants';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { toast } from 'sonner';
+import axios from 'axios';
 import { ArrowLeft, CheckCircle2, CreditCard, Truck, MapPin, Phone, User, Upload, Image as ImageIcon } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { uploadFile } from '../lib/upload';
@@ -72,9 +73,9 @@ export default function Checkout() {
     name: profile?.displayName || user?.displayName || '',
     email: profile?.email || user?.email || '',
     phone: profile?.phone || '',
-    emergencyNumber: '',
-    district: '',
-    city: '',
+    emergencyNumber: profile?.emergencyNumber || '',
+    district: profile?.district || '',
+    city: profile?.city || '',
     address: profile?.address || '',
     deliveryMethod: 'Home',
     deliveryArea: 'inside-dhaka' as 'inside-dhaka' | 'outside-dhaka',
@@ -92,6 +93,9 @@ export default function Checkout() {
         name: prev.name || profile.displayName || '',
         email: prev.email || profile.email || '',
         phone: prev.phone || profile.phone || '',
+        emergencyNumber: prev.emergencyNumber || profile.emergencyNumber || '',
+        district: prev.district || profile.district || '',
+        city: prev.city || profile.city || '',
         address: prev.address || profile.address || '',
       }));
     }
@@ -100,6 +104,23 @@ export default function Checkout() {
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [nextOrderId, setNextOrderId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchNextId = async () => {
+      if (!user) return;
+      try {
+        const token = await user.getIdToken();
+        const response = await axios.get('/api/orders/next-id', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setNextOrderId(response.data.nextId);
+      } catch (error) {
+        console.error('Error fetching next order ID:', error);
+      }
+    };
+    fetchNextId();
+  }, [user]);
 
   useEffect(() => {
     if (selectedItems.length === 0) {
@@ -146,7 +167,8 @@ export default function Checkout() {
         selectedSubtotal, 
         deliveryCharge, 
         total, 
-        payableAmount 
+        payableAmount,
+        nextOrderId
       } 
     });
   };
@@ -165,7 +187,7 @@ export default function Checkout() {
         Back to Cart
       </button>
 
-      <div className="flex flex-col lg:flex-row gap-12 items-start">
+      <div className="flex flex-col lg:flex-row gap-12 items-stretch lg:items-start">
         <div className="flex-1">
           <h1 className="text-4xl font-bold tracking-tight text-gray-900 mb-12">Checkout</h1>
 
@@ -248,14 +270,9 @@ export default function Checkout() {
                     onChange={(e) => setFormData({ ...formData, district: e.target.value })}
                   >
                     <option value="">Select District</option>
-                    <option value="Dhaka">Dhaka</option>
-                    <option value="Chittagong">Chittagong</option>
-                    <option value="Rajshahi">Rajshahi</option>
-                    <option value="Khulna">Khulna</option>
-                    <option value="Barisal">Barisal</option>
-                    <option value="Sylhet">Sylhet</option>
-                    <option value="Rangpur">Rangpur</option>
-                    <option value="Mymensingh">Mymensingh</option>
+                    {BANGLADESH_DISTRICTS.map(district => (
+                      <option key={district} value={district}>{district}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -388,8 +405,8 @@ export default function Checkout() {
         </div>
 
         {/* Order Summary Sidebar */}
-        <aside className="lg:w-96">
-          <div className="bg-gray-900 text-white rounded-[2.5rem] p-8 shadow-2xl sticky top-24">
+        <aside className="w-full lg:w-96">
+          <div className="bg-gray-900 text-white rounded-3xl md:rounded-[2.5rem] p-6 md:p-8 shadow-2xl sticky top-24">
             <h2 className="text-2xl font-bold tracking-tight mb-8">Your Order</h2>
             
             <div className="max-h-60 overflow-y-auto mb-8 pr-2 space-y-4 scrollbar-hide">
@@ -418,12 +435,12 @@ export default function Checkout() {
               </div>
               <div className="border-t border-white/10 pt-4 flex justify-between items-center">
                 <span className="text-xl font-bold tracking-tight">Total</span>
-                <span className="text-3xl font-bold tracking-tight text-orange-500">{formatPrice(total)}</span>
+                <span className="text-2xl md:text-3xl font-bold tracking-tight text-orange-500">{formatPrice(total)}</span>
               </div>
               {formData.paymentType && (
                 <div className="flex justify-between items-center text-orange-400 font-bold">
                   <span>Payable Now ({formData.paymentType})</span>
-                  <span className="text-xl">{formatPrice(payableAmount)}</span>
+                  <span className="text-lg md:text-xl">{formatPrice(payableAmount)}</span>
                 </div>
               )}
             </div>
@@ -431,14 +448,14 @@ export default function Checkout() {
             <button
               onClick={handleSubmit}
               disabled={isSubmitting || !formData.paymentType}
-              className="w-full bg-orange-600 text-white py-5 rounded-2xl font-bold text-xl shadow-xl hover:bg-orange-700 transition-all flex items-center justify-center space-x-3 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-orange-600 text-white py-4 md:py-5 rounded-2xl font-bold text-lg md:text-xl shadow-xl hover:bg-orange-700 transition-all flex items-center justify-center space-x-3 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 <div className="h-6 w-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
               ) : (
                 <>
                   <span>Proceed to Payment</span>
-                  <CheckCircle2 className="h-6 w-6" />
+                  <CheckCircle2 className="h-5 w-5 md:h-6 md:w-6" />
                 </>
               )}
             </button>

@@ -89,6 +89,22 @@ export default function Footer() {
                 <span>{settings.email}</span>
               </li>
             </ul>
+            
+            {/* Newsletter in Footer */}
+            <div className="mt-4">
+              <h4 className="text-white font-bold text-sm mb-4 uppercase tracking-wider">Newsletter</h4>
+              <form className="flex flex-col space-y-2">
+                <input
+                  type="email"
+                  placeholder="Enter email"
+                  className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:ring-1 focus:ring-primary outline-none"
+                  required
+                />
+                <button className="bg-primary text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-primary/90 transition-all">
+                  Subscribe
+                </button>
+              </form>
+            </div>
           </div>
         </div>
 

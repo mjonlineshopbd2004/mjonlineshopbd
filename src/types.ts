@@ -7,6 +7,9 @@ export interface UserProfile {
   photoURL?: string;
   role: UserRole;
   phone?: string;
+  emergencyNumber?: string;
+  district?: string;
+  city?: string;
   address?: string;
   createdAt: string;
 }

@@ -319,10 +319,15 @@ export const scrapeProduct = async (req: Request, res: Response) => {
         7. category: The product category.
         8. vendor: The brand or seller name (e.g., "Nike", "Apple", or the store name).
         9. sizes/colors: Available variations (e.g., ["S", "M", "L"], ["Red", "Blue"]).
-        10. colorVariants: A list of objects containing the color name and its specific image URL (e.g., [{"name": "Red", "image": "https://example.com/red.jpg"}]). This is CRITICAL for matching colors to photos.
-        11. specifications: Key-value pairs of product specs (e.g., [{"key": "Material", "value": "Cotton"}]).`,
+        10. colorVariants: A list of objects containing the color name and its specific image URL (e.g., [{"name": "Red", "image": "https://example.com/red.jpg"}]). This is CRITICAL for matching colors to photos. For Daraz, look for the 'Color Family' section.
+        11. specifications: Key-value pairs of product specs (e.g., [{"key": "Material", "value": "Cotton"}]).
+        
+        STRICT RULES:
+        - DO NOT put sizes (like 38, 40, XL, M) into the 'colors' array. Put them in 'sizes'.
+        - If a variation name includes both color and size (e.g., 'Magenta-38'), split them if possible or put the color part in 'colors' and size in 'sizes'.
+        - 'colorVariants' MUST have a valid image URL for each color.`,
         config: {
-          systemInstruction: "You are a professional product data extractor. Your goal is to extract the most accurate and original information. For Daraz, look for the price in elements with classes like 'pdp-price', 'pdp-price_type_normal', or 'pdp-product-price'. For 1688, look for the price in 'price-text' or 'price-num'. If the price is in a foreign currency (like Chinese Yuan ¥ or USD $), convert it to Bangladeshi Taka (BDT) using current approximate rates (e.g., 1 CNY = 16 BDT, 1 USD = 115 BDT). If the price is 0 or missing, try to find it in the text. For specifications, look for product details, features, or technical specs. For vendor, look for the brand name or shop name. For colorVariants, look for elements that link a color name to a thumbnail image (common in Daraz 'Color Family' section). Return ONLY a valid JSON object. IGNORE LOGOS AND SITE ICONS. If you see multiple prices, take the current discounted price.",
+          systemInstruction: "You are a professional product data extractor. Your goal is to extract the most accurate and original information. For Daraz, look for the price in elements with classes like 'pdp-price', 'pdp-price_type_normal', or 'pdp-product-price'. For 1688, look for the price in 'price-text' or 'price-num'. If the price is in a foreign currency (like Chinese Yuan ¥ or USD $), convert it to Bangladeshi Taka (BDT) using current approximate rates (e.g., 1 CNY = 16 BDT, 1 USD = 115 BDT). If the price is 0 or missing, try to find it in the text. For specifications, look for product details, features, or technical specs. For vendor, look for the brand name or shop name. For colorVariants, look for elements that link a color name to a thumbnail image (common in Daraz 'Color Family' section). Return ONLY a valid JSON object. IGNORE LOGOS AND SITE ICONS. If you see multiple prices, take the current discounted price. IMPORTANT: Distinguish between sizes (38, 40, S, M, L) and colors (Red, Blue, Magenta). Do not mix them.",
           responseMimeType: "application/json",
           maxOutputTokens: 3000,
           responseSchema: {
@@ -837,16 +842,27 @@ async function performCheerioFallback(url: string, res: Response, html: string, 
     for (const selector of variantSelectors) {
       $(selector).each((i, el) => {
         const $el = $(el);
-        const name = $el.attr('title') || $el.attr('data-value') || $el.find('.sku-name, .variant-name, .color-name, .sku-prop-content-item-title').text().trim() || $el.text().trim();
-        const img = $el.find('img').attr('src') || $el.find('img').attr('data-src') || $el.css('background-image')?.replace(/url\(['"]?(.*?)['"]?\)/i, '$1');
+        const name = $el.attr('title') || 
+                     $el.attr('data-value') || 
+                     $el.find('img').attr('alt') ||
+                     $el.find('.sku-name, .variant-name, .color-name, .sku-prop-content-item-title').text().trim() || 
+                     $el.text().trim();
+                     
+        const img = $el.find('img').attr('src') || 
+                    $el.find('img').attr('data-src') || 
+                    $el.find('img').attr('data-lazy-src') ||
+                    $el.css('background-image')?.replace(/url\(['"]?(.*?)['"]?\)/i, '$1');
         
         if (name && name.length < 50 && img && img !== 'none') {
           let finalImg = img;
           if (img.startsWith('//')) finalImg = 'https:' + img;
           else if (img.startsWith('/')) finalImg = new URL(url).origin + img;
           
-          if (!colorVariants.find(v => v.name === name)) {
-            colorVariants.push({ name, image: finalImg });
+          // Clean name (remove size if it's like "Magenta-38")
+          const cleanName = name.split('-')[0].trim();
+          
+          if (!colorVariants.find(v => v.name === cleanName)) {
+            colorVariants.push({ name: cleanName, image: finalImg });
           }
           
           // Also add variant images to the main images array if not already there
@@ -910,7 +926,7 @@ async function performCheerioFallback(url: string, res: Response, html: string, 
       originalPrice: originalPrice || '',
       vendor: vendor || '',
       description: description ? description.substring(0, 1000) : 'No description found.',
-      images: finalImages.length > 0 ? finalImages : ['https://picsum.photos/seed/product/800/800'],
+      images: finalImages,
       category: category || 'Imported',
       sizes: sizes.length > 0 ? sizes : [],
       colors: colors.length > 0 ? colors : [],

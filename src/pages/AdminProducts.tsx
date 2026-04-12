@@ -3,7 +3,7 @@ import { collection, query, getDocs, deleteDoc, doc, orderBy, updateDoc } from '
 import { db } from '../lib/firebase';
 import { Product } from '../types';
 import { formatPrice, cn, getProxyUrl } from '../lib/utils';
-import { Plus, Search, Edit2, Trash2, Package, ChevronRight, Filter, RefreshCw, Loader2, Globe } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Package, ChevronRight, Filter, RefreshCw, Loader2, Globe, Image as ImageIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -187,7 +187,18 @@ export default function AdminProducts() {
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-4">
                       <div className="w-14 h-14 rounded-xl overflow-hidden bg-white/5 flex-shrink-0 border border-white/5">
-                        <img src={getProxyUrl(product.images[0])} alt="" className="w-full h-full object-cover" />
+                        {getProxyUrl(product.images[0]) ? (
+                          <img 
+                            src={getProxyUrl(product.images[0])!} 
+                            alt="" 
+                            className="w-full h-full object-cover" 
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <ImageIcon className="h-6 w-6 text-gray-700" />
+                          </div>
+                        )}
                       </div>
                       <div>
                         <p className="font-bold tracking-tight text-white group-hover:text-primary transition-colors line-clamp-1">{product.name}</p>

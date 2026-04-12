@@ -25,16 +25,50 @@ export default function AdminOrders() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState<Order | null>(null);
-  const [scale, setScale] = useState(0.8);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [scale, setScale] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [startY, setStartY] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [scrollTop, setScrollTop] = useState(0);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!containerRef.current) return;
+    setIsDragging(true);
+    setStartX(e.pageX - containerRef.current.offsetLeft);
+    setStartY(e.pageY - containerRef.current.offsetTop);
+    setScrollLeft(containerRef.current.scrollLeft);
+    setScrollTop(containerRef.current.scrollTop);
+  };
+
+  const handleMouseLeave = () => setIsDragging(false);
+  const handleMouseUp = () => setIsDragging(false);
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !containerRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - containerRef.current.offsetLeft;
+    const y = e.pageY - containerRef.current.offsetTop;
+    const walkX = (x - startX) * 2;
+    const walkY = (y - startY) * 2;
+    containerRef.current.scrollLeft = scrollLeft - walkX;
+    containerRef.current.scrollTop = scrollTop - walkY;
+  };
+
+  const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.2, 3));
+  const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.2, 0.5));
+  const handleResetZoom = () => setZoomLevel(1);
 
   useEffect(() => {
     const updateScale = () => {
       if (containerRef.current) {
         const containerWidth = containerRef.current.offsetWidth;
         const baseWidth = 794;
-        const newScale = Math.max(0.1, Math.min(0.8, (containerWidth - 32) / baseWidth));
-        setScale(newScale);
+        const fitScale = Math.max(0.1, (containerWidth - 32) / baseWidth);
+        setScale(fitScale * zoomLevel);
       }
     };
     if (showInvoiceModal) {
@@ -42,7 +76,7 @@ export default function AdminOrders() {
       window.addEventListener('resize', updateScale);
     }
     return () => window.removeEventListener('resize', updateScale);
-  }, [showInvoiceModal]);
+  }, [showInvoiceModal, zoomLevel]);
 
   const handleViewInvoice = (order: Order) => {
     setSelectedOrderForInvoice(order);
@@ -289,7 +323,18 @@ export default function AdminOrders() {
                     <div className="flex items-center gap-4">
                       {order.items[0] && (
                         <div className="w-12 h-12 rounded-xl overflow-hidden bg-white/5 flex-shrink-0 border border-white/5">
-                          <img src={getProxyUrl(order.items[0].images[0])} alt="" className="w-full h-full object-cover" />
+                          {getProxyUrl(order.items[0].images[0]) ? (
+                            <img 
+                              src={getProxyUrl(order.items[0].images[0])!} 
+                              alt="" 
+                              className="w-full h-full object-cover" 
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <ImageIcon className="h-6 w-6 text-gray-700" />
+                            </div>
+                          )}
                         </div>
                       )}
                       <div>
@@ -458,7 +503,18 @@ export default function AdminOrders() {
                     </h3>
                     <div className="bg-white/5 p-4 rounded-3xl border border-white/5 max-w-sm">
                       <a href={selectedOrder.paymentScreenshot} target="_blank" rel="noopener noreferrer" className="block relative group overflow-hidden rounded-2xl">
-                        <img src={getProxyUrl(selectedOrder.paymentScreenshot)} alt="Payment Screenshot" className="w-full h-auto object-cover transition-transform group-hover:scale-105" />
+                        {getProxyUrl(selectedOrder.paymentScreenshot) ? (
+                          <img 
+                            src={getProxyUrl(selectedOrder.paymentScreenshot)!} 
+                            alt="Payment Screenshot" 
+                            className="w-full h-auto object-cover transition-transform group-hover:scale-105" 
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="w-full h-40 flex items-center justify-center bg-white/5">
+                            <ImageIcon className="h-12 w-12 text-gray-700" />
+                          </div>
+                        )}
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <span className="bg-white text-black px-4 py-2 rounded-xl font-black text-xs">View Full Size</span>
                         </div>
@@ -538,7 +594,18 @@ export default function AdminOrders() {
                     {selectedOrder.items.map((item, idx) => (
                       <div key={idx} className="flex items-center gap-6 bg-white/5 border border-white/5 p-6 rounded-3xl group">
                         <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white/5 flex-shrink-0 border border-white/5">
-                          <img src={getProxyUrl(item.images[0])} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                          {getProxyUrl(item.images[0]) ? (
+                            <img 
+                              src={getProxyUrl(item.images[0])!} 
+                              alt="" 
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform" 
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <ImageIcon className="h-8 w-8 text-gray-700" />
+                            </div>
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-black text-white text-lg truncate group-hover:text-primary transition-colors">{item.name}</p>
@@ -652,27 +719,83 @@ export default function AdminOrders() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#111111] w-full max-w-4xl rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10 flex flex-col max-h-[95vh]"
+              className="bg-[#111111] w-full max-w-4xl rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10 flex flex-col h-[90vh] max-h-[95vh]"
             >
-              <div className="p-4 sm:p-6 border-b border-white/5 flex justify-between items-center">
-                <h2 className="text-xl font-black text-white">Invoice Preview</h2>
+              <div className="p-4 sm:p-6 border-b border-white/5 flex justify-between items-center bg-white">
+                <h2 className="text-xl font-black text-gray-900">Invoice Preview</h2>
                 <button
                   onClick={() => setShowInvoiceModal(false)}
-                  className="p-2 hover:bg-white/5 rounded-full transition-colors"
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                 >
-                  <X className="h-6 w-6 text-gray-500" />
+                  <X className="h-6 w-6 text-gray-400" />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-auto p-2 sm:p-4 bg-white/5 flex justify-center items-start" ref={containerRef}>
-                <div style={{ 
-                  transform: `scale(${scale})`, 
-                  transformOrigin: 'top center',
-                  width: '794px',
-                  height: '1123px',
-                  marginBottom: `${-1123 * (1 - scale)}px`
-                }}>
-                  <Invoice order={selectedOrderForInvoice} settings={settings} />
+              {/* Red Zoom Controls in requested location */}
+              <div className="bg-white px-6 py-3 flex justify-end items-center gap-3 border-b border-gray-100">
+                <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100">
+                  <button
+                    onClick={handleZoomOut}
+                    className="bg-red-600 text-white w-10 h-10 rounded-lg flex items-center justify-center font-black text-xl shadow-lg shadow-red-200 hover:bg-red-700 active:scale-95 transition-all"
+                    title="Zoom Out"
+                  >
+                    -
+                  </button>
+                  <div className="px-2 flex flex-col items-center min-w-[50px]">
+                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Zoom</span>
+                    <button 
+                      onClick={handleResetZoom}
+                      className="text-[10px] font-black text-gray-900 hover:text-red-600 transition-colors"
+                    >
+                      {Math.round(zoomLevel * 100)}%
+                    </button>
+                  </div>
+                  <button
+                    onClick={handleZoomIn}
+                    className="bg-red-600 text-white w-10 h-10 rounded-lg flex items-center justify-center font-black text-xl shadow-lg shadow-red-200 hover:bg-red-700 active:scale-95 transition-all"
+                    title="Zoom In"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <div 
+                className={cn(
+                  "flex-1 overflow-auto p-4 sm:p-8 bg-gray-100/50 select-none",
+                  isDragging ? "cursor-grabbing" : "cursor-grab"
+                )}
+                ref={containerRef}
+                onMouseDown={handleMouseDown}
+                onMouseLeave={handleMouseLeave}
+                onMouseUp={handleMouseUp}
+                onMouseMove={handleMouseMove}
+              >
+                <div className={cn(
+                  "min-h-full flex items-start pointer-events-none",
+                  scale > 1 ? "justify-start" : "justify-center"
+                )}>
+                  <div 
+                    style={{ 
+                      width: `${794 * scale}px`,
+                      height: `${1123 * scale}px`,
+                      minWidth: `${794 * scale}px`,
+                      minHeight: `${1123 * scale}px`,
+                    }}
+                    className="relative"
+                  >
+                    <div 
+                      className="transition-transform duration-300 ease-in-out shadow-2xl origin-top-left"
+                      style={{ 
+                        transform: `scale(${scale})`, 
+                        width: '794px',
+                        height: '1123px',
+                        backgroundColor: 'white'
+                      }}
+                    >
+                      <Invoice order={selectedOrderForInvoice} settings={settings} />
+                    </div>
+                  </div>
                 </div>
               </div>
 

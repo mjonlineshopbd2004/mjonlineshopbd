@@ -55,6 +55,7 @@ export default function AdminProductImporter() {
         if (!idToken) return;
 
         const response = await fetch('/api/scraper/status', {
+          credentials: 'same-origin',
           headers: {
             'Authorization': `Bearer ${idToken}`
           }
@@ -95,6 +96,7 @@ export default function AdminProductImporter() {
 
       const response = await fetch('/api/scraper/product', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${idToken}`,
@@ -293,7 +295,7 @@ export default function AdminProductImporter() {
 
   return (
     <div className="p-4 sm:p-8 bg-[#0a0a0a] min-h-screen text-white">
-      <div className="max-w-5xl mx-auto space-y-8">
+      <div className="max-w-[1600px] space-y-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <h1 className="text-3xl font-bold tracking-tight mb-2 flex items-center gap-3">
@@ -377,9 +379,13 @@ export default function AdminProductImporter() {
                     )}
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
-                      if (!target.src.includes('picsum.photos')) {
-                        target.src = 'https://picsum.photos/seed/mjshop/800/800';
-                        toast.error('Some images could not be loaded directly.');
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent && !parent.querySelector('.no-image-placeholder')) {
+                        const placeholder = document.createElement('div');
+                        placeholder.className = 'no-image-placeholder w-full h-full flex flex-col items-center justify-center bg-white/5 text-gray-500';
+                        placeholder.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image-off h-12 w-12 mb-2"><line x1="2" x2="22" y1="2" y2="22"/><path d="M10.41 10.41a2 2 0 1 1-2.82-2.82"/><line x1="10" x2="21" y1="15" y2="15"/><path d="M21 8v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/><path d="m3 16 5-5 3 3"/></svg><span class="text-xs font-bold uppercase tracking-widest">No Image</span>';
+                        parent.appendChild(placeholder);
                       }
                     }}
                   />
@@ -467,8 +473,8 @@ export default function AdminProductImporter() {
                         </div>
                         <input
                           type="number"
-                          value={product.price}
-                          onChange={(e) => updateProductField('price', Number(e.target.value))}
+                          value={product.price || ''}
+                          onChange={(e) => updateProductField('price', e.target.value === '' ? 0 : Number(e.target.value))}
                           className={cn(
                             "w-full bg-emerald-500/5 border rounded-xl py-3 pl-10 pr-4 text-xl font-black focus:outline-none transition-all",
                             product.price === 0 ? "border-red-500/50 text-red-500 animate-pulse" : "border-emerald-500/20 text-emerald-500 focus:border-emerald-500"

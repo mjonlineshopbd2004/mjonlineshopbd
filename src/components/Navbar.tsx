@@ -111,8 +111,6 @@ export default function Navbar() {
     { name: 'About', path: '/about' },
     { name: 'Shop', path: '/products' },
     { name: 'Vendors', path: '/vendors' },
-    { name: 'Pages', path: '/pages' },
-    { name: 'Blog', path: '/blog' },
     { name: 'Contact', path: '/contact' },
   ];
 
@@ -143,19 +141,19 @@ export default function Navbar() {
       </div>
 
       {/* Main Header */}
-      <div className="bg-white py-3 border-b border-gray-100">
-        <div className="container-custom flex items-center justify-between gap-4">
+      <div className="bg-white/80 backdrop-blur-md py-2 md:py-3 border-b border-gray-100 sticky top-0 z-50">
+        <div className="container-custom flex items-center justify-between gap-3 md:gap-4">
           {/* Logo */}
           <Link to="/" className="flex-shrink-0">
             {settings.logoUrl && !logoError ? (
               <img 
                 src={getProxyUrl(settings.logoUrl)} 
                 alt={settings.storeName} 
-                className="h-10 w-auto" 
+                className="h-8 md:h-10 w-auto" 
                 onError={() => setLogoError(true)}
               />
             ) : (
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-primary/20">
+              <div className="w-8 h-8 md:w-10 md:h-10 bg-primary rounded-lg md:rounded-xl flex items-center justify-center text-white font-bold text-lg md:text-xl shadow-lg shadow-primary/20">
                 {settings.storeName.charAt(0)}
               </div>
             )}
@@ -164,19 +162,16 @@ export default function Navbar() {
           {/* Search - Mobile compact */}
           <div className="flex-1 max-w-md">
             <form onSubmit={handleSearch} className="relative flex items-center">
+              <div className="absolute left-3 text-gray-400">
+                <Search className="h-3.5 w-3.5" />
+              </div>
               <input
                 type="text"
-                placeholder="Search"
-                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 outline-none focus:bg-white focus:border-primary/30 transition-all text-xs font-medium pr-10"
+                placeholder="Search products..."
+                className="w-full bg-gray-100/50 border-none rounded-full pl-9 pr-10 py-2 outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all text-[11px] md:text-xs font-medium"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
-              <button 
-                type="submit"
-                className="absolute right-10 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-primary"
-              >
-                <Search className="h-4 w-4" />
-              </button>
               
               {settings.enableImageSearch !== false && (
                 <>
@@ -295,6 +290,27 @@ export default function Navbar() {
               </div>
             </Link>
           </div>
+        </div>
+      </div>
+
+      {/* Mobile Navigation Links - Horizontal Scroll */}
+      <div className="md:hidden bg-white border-b border-gray-50 overflow-x-auto no-scrollbar sticky top-[52px] z-40">
+        <div className="container-custom flex items-center gap-6 py-3 whitespace-nowrap">
+          {mainNavLinks.map((link) => (
+            <Link
+              key={link.name}
+              to={link.path}
+              className="text-[11px] font-black text-gray-600 uppercase tracking-wider hover:text-primary transition-colors px-1"
+            >
+              {link.name}
+            </Link>
+          ))}
+          <Link
+            to="/products?trending=true"
+            className="text-[11px] font-black text-primary uppercase tracking-wider px-1"
+          >
+            Trending
+          </Link>
         </div>
       </div>
 

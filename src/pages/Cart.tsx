@@ -35,14 +35,32 @@ export default function Cart() {
     <div className="bg-gray-50 min-h-screen pb-32">
       {/* Header */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-30">
-        <div className="container-custom py-4 flex items-center gap-4">
-          <button 
-            onClick={() => navigate(-1)}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <ChevronLeft className="h-6 w-6 text-gray-600" />
-          </button>
-          <h1 className="text-2xl font-black text-gray-900 font-display uppercase tracking-tight">Cart</h1>
+        <div className="container-custom py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => navigate(-1)}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <ChevronLeft className="h-6 w-6 text-gray-600" />
+            </button>
+            <h1 className="text-2xl font-black text-gray-900 font-display uppercase tracking-tight">Cart</h1>
+          </div>
+          
+          {items.length > 0 && (
+            <div className="flex items-center gap-3">
+              <div className="text-right hidden sm:block">
+                <p className="text-[10px] font-bold text-gray-400 uppercase">Total</p>
+                <p className="text-sm font-black text-gray-900">৳ {selectedSubtotal.toFixed(2)}</p>
+              </div>
+              <button
+                onClick={() => navigate('/checkout')}
+                disabled={selectedItems.length === 0}
+                className="bg-primary text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-tight hover:opacity-90 transition-all disabled:opacity-50"
+              >
+                Go to Checkout
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -146,7 +164,28 @@ export default function Cart() {
                     >
                       <Minus className="h-3.5 w-3.5" />
                     </button>
-                    <span className="w-8 text-center text-xs font-black">{item.quantity}</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={item.quantity}
+                      onChange={(e) => {
+                        let val = e.target.value;
+                        // Remove non-numeric characters
+                        val = val.replace(/\D/g, '');
+                        // Remove leading zeros
+                        if (val.length > 1) {
+                          val = val.replace(/^0+/, '');
+                        }
+                        
+                        if (val === '') {
+                          updateQuantity(item.id, 1, item.selectedSize, item.selectedColor);
+                        } else {
+                          const numVal = parseInt(val);
+                          updateQuantity(item.id, numVal, item.selectedSize, item.selectedColor);
+                        }
+                      }}
+                      className="w-8 text-center text-xs font-black bg-transparent outline-none"
+                    />
                     <button
                       onClick={() => updateQuantity(item.id, item.quantity + 1, item.selectedSize, item.selectedColor)}
                       className="p-1.5 text-gray-400 hover:text-primary transition-colors"
@@ -190,26 +229,18 @@ export default function Cart() {
               <span className="text-lg font-black text-gray-900">৳ {selectedSubtotal.toFixed(2)}</span>
             </div>
           </div>
+          
+          <button
+            onClick={() => navigate('/checkout')}
+            disabled={selectedItems.length === 0}
+            className="w-full mt-8 bg-primary text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:opacity-90 transition-all disabled:opacity-50 shadow-lg shadow-primary/20"
+          >
+            Go to Checkout
+          </button>
         </div>
       </div>
 
-      {/* Sticky Bottom Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-[#003d4d] z-50 px-4 py-3 flex items-center gap-4 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
-        <Link 
-          to="/" 
-          className="flex flex-col items-center justify-center text-white/80 hover:text-white transition-colors"
-        >
-          <Home className="h-6 w-6" />
-          <span className="text-[10px] font-bold uppercase mt-0.5">Home</span>
-        </Link>
-        <button
-          onClick={() => navigate('/checkout')}
-          disabled={selectedItems.length === 0}
-          className="flex-1 bg-white text-[#003d4d] py-3.5 rounded-xl font-black text-sm uppercase tracking-wider hover:bg-gray-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-        >
-          Go to Checkout
-        </button>
-      </div>
+      {/* Sticky Bottom Bar - Removed as requested */}
     </div>
   );
 }

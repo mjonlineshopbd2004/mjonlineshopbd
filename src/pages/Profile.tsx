@@ -16,16 +16,19 @@ import {
   Settings, 
   Clock, 
   Package,
-  ChevronRight
+  ChevronRight,
+  Camera
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
+import { getProxyUrl } from '../lib/utils';
 
 export default function Profile() {
   const { profile, updateUserProfile, logout } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('account'); // 'account' or 'settings'
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
@@ -87,13 +90,25 @@ export default function Profile() {
       {/* Profile Header */}
       <div className="bg-white pt-12 pb-8 px-6 text-center border-b border-gray-100">
         <div className="relative inline-block">
-          <div className="w-24 h-24 bg-gray-300 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-inner mx-auto">
-            {profile.displayName?.charAt(0).toUpperCase() || profile.email?.charAt(0).toUpperCase()}
+          <div className="relative">
+            <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center text-gray-400 text-3xl font-bold shadow-inner mx-auto overflow-hidden border-4 border-white">
+              {profile.photoURL ? (
+                <img src={getProxyUrl(profile.photoURL)} alt="" className="w-full h-full object-cover" />
+              ) : (
+                profile.displayName?.charAt(0).toUpperCase() || profile.email?.charAt(0).toUpperCase()
+              )}
+            </div>
+            {/* Online Status Indicator - Adjusted for visibility */}
+            <div className="absolute bottom-2 right-2 w-5 h-5 bg-green-500 border-[3px] border-white rounded-full shadow-md z-10"></div>
           </div>
         </div>
-        <h1 className="mt-4 text-xl font-black text-gray-900 uppercase tracking-tight font-display">
-          {profile.displayName || 'User'}
-        </h1>
+        
+        <div className="mt-4">
+          <p className="text-[10px] font-black text-green-500 uppercase tracking-widest mb-1">Active</p>
+          <h1 className="text-xl font-black text-gray-900 uppercase tracking-tight font-display">
+            {profile.displayName || 'User'}
+          </h1>
+        </div>
       </div>
 
       {/* Menu Grid */}

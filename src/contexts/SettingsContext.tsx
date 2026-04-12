@@ -118,13 +118,13 @@ export const defaultSettings: SiteSettings = {
   nagadNumber: '01610880813',
   rocketNumber: '01610880813',
   upayNumber: '01610880813',
-  bkashLogo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Bkash_logo.svg/1200px-Bkash_logo.svg.png',
-  nagadLogo: 'https://download.logo.wine/logo/Nagad/Nagad-Logo.wine.png',
-  rocketLogo: 'https://download.logo.wine/logo/Rocket_(mobile_banking_service)/Rocket_(mobile_banking_service)-Logo.wine.png',
-  upayLogo: 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways@master/logos/upay.png',
+  bkashLogo: 'https://raw.githubusercontent.com/tusharnit/bangladesh-payment-gateways/master/logos/bkash.png',
+  nagadLogo: 'https://raw.githubusercontent.com/tusharnit/bangladesh-payment-gateways/master/logos/nagad.png',
+  rocketLogo: 'https://raw.githubusercontent.com/tusharnit/bangladesh-payment-gateways/master/logos/rocket.png',
+  upayLogo: 'https://raw.githubusercontent.com/tusharnit/bangladesh-payment-gateways/master/logos/upay.png',
   bankLogo: '🏦',
-  visaLogo: 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways@master/logos/visa.png',
-  mastercardLogo: 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways@master/logos/mastercard.png',
+  visaLogo: 'https://raw.githubusercontent.com/tusharnit/bangladesh-payment-gateways/master/logos/visa.png',
+  mastercardLogo: 'https://raw.githubusercontent.com/tusharnit/bangladesh-payment-gateways/master/logos/mastercard.png',
   bankName: 'Nexus Bank',
   bankAccountNumber: '123.456.7890',
   bankAccountName: 'MJ Online Shop',
@@ -136,7 +136,7 @@ export const defaultSettings: SiteSettings = {
   smallBanners: [],
   categories: [],
   banks: [
-    { id: 'nexus', name: 'Nexus', accountName: 'MJ Online Shop', accountNumber: '123.456.7890', logo: 'https://logo.clearbit.com/dutchbanglabank.com' },
+    { id: 'nexus', name: 'Nexus', accountName: 'MJ Online Shop', accountNumber: '123.456.7890', logo: 'https://raw.githubusercontent.com/tusharnit/bangladesh-payment-gateways/master/logos/dbbl.png' },
     { id: 'citybank', name: 'City Bank', accountName: 'MJ Online Shop', accountNumber: '123.456.7890', logo: 'https://logo.clearbit.com/thecitybank.com' },
     { id: 'bracbank', name: 'Brac Bank', accountName: 'MJ Online Shop', accountNumber: '123.456.7890', logo: 'https://logo.clearbit.com/bracbank.com' },
     { id: 'trustbank', name: 'Trust Bank', accountName: 'MJ Online Shop', accountNumber: '123.456.7890', logo: 'https://logo.clearbit.com/tblbd.com' },
@@ -144,9 +144,9 @@ export const defaultSettings: SiteSettings = {
     { id: 'nrbcbank', name: 'NRBC Bank', accountName: 'MJ Online Shop', accountNumber: '123.456.7890', logo: 'https://logo.clearbit.com/nrbcommercialbank.com' },
   ],
   mobileBanking: [
-    { id: 'bkash', name: 'bKash', number: '01810580592', type: 'personal', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Bkash_logo.svg/1200px-Bkash_logo.svg.png' },
-    { id: 'nagad', name: 'Nagad', number: '01810580592', type: 'personal', logo: 'https://download.logo.wine/logo/Nagad/Nagad-Logo.wine.png' },
-    { id: 'rocket', name: 'Rocket', number: '01810580592', type: 'personal', logo: 'https://download.logo.wine/logo/Rocket_(mobile_banking_service)/Rocket_(mobile_banking_service)-Logo.wine.png' },
+    { id: 'bkash', name: 'bKash', number: '01810580592', type: 'personal', logo: 'https://raw.githubusercontent.com/tusharnit/bangladesh-payment-gateways/master/logos/bkash.png' },
+    { id: 'nagad', name: 'Nagad', number: '01810580592', type: 'personal', logo: 'https://raw.githubusercontent.com/tusharnit/bangladesh-payment-gateways/master/logos/nagad.png' },
+    { id: 'rocket', name: 'Rocket', number: '01810580592', type: 'personal', logo: 'https://raw.githubusercontent.com/tusharnit/bangladesh-payment-gateways/master/logos/rocket.png' },
   ],
 };
 
@@ -164,6 +164,55 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         // Handle broken/expired OpenAI logo URL
         if (data.logoUrl && data.logoUrl.includes('files.oaiusercontent.com')) {
           data.logoUrl = defaultSettings.logoUrl;
+        }
+
+        // Fix broken Vecteezy and Trust Bank logos that return 403/500
+        const fixLogo = (url: string, name?: string) => {
+          if (!url) return url;
+          const lowerUrl = url.toLowerCase();
+          const lowerName = (name || '').toLowerCase();
+
+          // If the URL is from a known problematic domain, replace it with a reliable one
+          if (lowerUrl.includes('vecteezy.com') || lowerUrl.includes('tblbd.com') || lowerUrl.includes('oaiusercontent.com')) {
+            if (lowerName.includes('bkash') || lowerUrl.includes('bkash')) 
+              return 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways/logos/bkash.png';
+            if (lowerName.includes('nagad') || lowerUrl.includes('nagad')) 
+              return 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways/logos/nagad.png';
+            if (lowerName.includes('rocket') || lowerUrl.includes('rocket')) 
+              return 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways/logos/rocket.png';
+            if (lowerName.includes('upay') || lowerUrl.includes('upay')) 
+              return 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways/logos/upay.png';
+            if (lowerName.includes('nexus') || lowerName.includes('dbbl') || lowerUrl.includes('nexus') || lowerUrl.includes('dbbl')) 
+              return 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways/logos/dbbl.png';
+            if (lowerName.includes('visa') || lowerUrl.includes('visa')) 
+              return 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways/logos/visa.png';
+            if (lowerName.includes('mastercard') || lowerUrl.includes('mastercard')) 
+              return 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways/logos/mastercard.png';
+            if (lowerName.includes('trust bank') || lowerUrl.includes('tbl_logo')) 
+              return 'https://logo.clearbit.com/tblbd.com';
+          }
+          return url;
+        };
+
+        if (data.bkashLogo) data.bkashLogo = fixLogo(data.bkashLogo, 'bkash');
+        if (data.nagadLogo) data.nagadLogo = fixLogo(data.nagadLogo, 'nagad');
+        if (data.rocketLogo) data.rocketLogo = fixLogo(data.rocketLogo, 'rocket');
+        if (data.upayLogo) data.upayLogo = fixLogo(data.upayLogo, 'upay');
+        if (data.visaLogo) data.visaLogo = fixLogo(data.visaLogo, 'visa');
+        if (data.mastercardLogo) data.mastercardLogo = fixLogo(data.mastercardLogo, 'mastercard');
+
+        if (data.banks) {
+          data.banks = data.banks.map((bank: any) => ({
+            ...bank,
+            logo: fixLogo(bank.logo, bank.name)
+          }));
+        }
+
+        if (data.mobileBanking) {
+          data.mobileBanking = data.mobileBanking.map((mb: any) => ({
+            ...mb,
+            logo: fixLogo(mb.logo, mb.name)
+          }));
         }
 
         const categories = data.categories && data.categories.length > 0 

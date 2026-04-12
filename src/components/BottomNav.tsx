@@ -12,6 +12,10 @@ export default function BottomNav() {
   const { totalItems } = useCart();
   const { items: wishlistItems } = useWishlist();
   const [logoError, setLogoError] = React.useState(false);
+  const hideOnPaths = ['/checkout', '/payment'];
+  const shouldHide = hideOnPaths.includes(location.pathname);
+
+  if (shouldHide) return null;
 
   const navItems = [
     { name: 'Categories', path: '/categories', icon: Layers },

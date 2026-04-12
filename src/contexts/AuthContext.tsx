@@ -118,6 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await fetch('/api/auth/check-email', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 
           'Content-Type': 'application/json',
           'Accept': 'application/json'
@@ -136,6 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await fetch('/api/auth/send-otp', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 
           'Content-Type': 'application/json',
           'Accept': 'application/json'
@@ -167,6 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await fetch('/api/auth/verify-otp', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 
           'Content-Type': 'application/json',
           'Accept': 'application/json'
@@ -192,6 +195,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await fetch('/api/auth/verify-register', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 
           'Content-Type': 'application/json',
           'Accept': 'application/json'
@@ -219,6 +223,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await fetch('/api/auth/reset-password', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 
           'Content-Type': 'application/json',
           'Accept': 'application/json'
@@ -331,6 +336,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 
           'Content-Type': 'application/json',
           'Accept': 'application/json'

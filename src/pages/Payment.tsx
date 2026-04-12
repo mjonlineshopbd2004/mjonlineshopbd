@@ -97,7 +97,7 @@ export default function Payment() {
 
   if (!checkoutData) return null;
 
-  const { formData, selectedItems, selectedSubtotal, deliveryCharge, total, payableAmount } = checkoutData;
+  const { formData, selectedItems, selectedSubtotal, deliveryCharge, total, payableAmount, nextOrderId } = checkoutData;
 
   const handleScreenshotChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -187,18 +187,35 @@ export default function Payment() {
 
       try {
         const token = await auth.currentUser?.getIdToken();
-        const response = await axios.post('/api/orders', orderData, {
+        const response = await fetch('/api/orders', {
+          method: 'POST',
+          credentials: 'same-origin',
           headers: {
-            Authorization: `Bearer ${token}`
-          }
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(orderData)
         });
         
+        if (!response.ok) {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to place order');
+          }
+          throw new Error(`Failed to place order (Status: ${response.status})`);
+        }
+
+        const data = await response.json();
+        
         clearCart();
-        navigate(`/order-confirmation/${response.data.id}`);
+        navigate(`/order-confirmation/${data.id}`);
         toast.success('Order placed successfully!');
       } catch (error: any) {
         console.error('Order creation error:', error);
-        toast.error(error.response?.data?.message || 'Failed to place order. Please try again.');
+        toast.error(error.message || 'Failed to place order. Please try again.');
       }
     } catch (error) {
       console.error("Error placing order:", error);
@@ -631,11 +648,11 @@ export default function Payment() {
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-500 font-bold">Order Id:</span>
-                  <span className="text-gray-900 font-black">#{(Math.random() * 100000000).toFixed(0)}</span>
+                  <span className="text-gray-900 font-black">#{nextOrderId || '...'}</span>
                 </div>
                 <div className="flex justify-between text-xs pt-4 border-t border-gray-100">
                   <span className="text-gray-500 font-bold">Invoice Amount:</span>
-                  <span className="text-lg font-black text-[#4a154b]">{formatPrice(payableAmount)} BDT</span>
+                  <span className="text-lg font-black text-[#4a154b]">{formatPrice(payableAmount)}</span>
                 </div>
               </div>
 

@@ -53,8 +53,8 @@ export default function Wishlist() {
       </div>
 
       <div className="container-custom py-6 max-w-3xl">
-        <div className="flex items-center justify-between mb-6">
-          <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">{items.length} items saved</p>
+        <div className="bg-white rounded-2xl p-4 mb-6 shadow-sm border border-gray-100 flex items-center justify-between">
+          <p className="text-sm font-bold text-gray-900 uppercase tracking-widest">{items.length} items saved</p>
           <button className="text-primary hover:bg-primary/5 p-2 rounded-lg transition-colors">
             <Trash2 className="h-5 w-5" />
           </button>

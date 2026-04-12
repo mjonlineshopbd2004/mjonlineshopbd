@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Save, FileSpreadsheet, AlertCircle, CheckCircle2, Loader2, RefreshCw, Copy, ExternalLink, HelpCircle, ShieldCheck, Image as ImageIcon } from 'lucide-react';
+import { Save, FileSpreadsheet, AlertCircle, CheckCircle2, Loader2, RefreshCw, Copy, ExternalLink, HelpCircle, ShieldCheck, Image as ImageIcon, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 import { auth, db } from '../lib/firebase';
@@ -62,6 +62,7 @@ const AdminGoogleSheetSettings: React.FC = () => {
       const idToken = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/admin/settings/google-sheet/test', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${idToken}`,
@@ -110,6 +111,7 @@ const AdminGoogleSheetSettings: React.FC = () => {
       const idToken = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/sync-products', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Authorization': `Bearer ${idToken}`,
           'Accept': 'application/json'
@@ -149,6 +151,7 @@ const AdminGoogleSheetSettings: React.FC = () => {
     try {
       const idToken = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/admin/test-firebase', {
+        credentials: 'same-origin',
         headers: {
           'Authorization': `Bearer ${idToken}`,
           'Accept': 'application/json'
@@ -175,6 +178,7 @@ const AdminGoogleSheetSettings: React.FC = () => {
     try {
       const idToken = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/admin/test-drive', {
+        credentials: 'same-origin',
         headers: {
           'Authorization': `Bearer ${idToken}`,
           'Accept': 'application/json'
@@ -281,6 +285,18 @@ const AdminGoogleSheetSettings: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-6 border-b border-gray-100 bg-red-50">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-6 h-6 text-red-600 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-bold text-red-900">গুরুত্বপূর্ণ: ইমেজ হারানোর ভয় (Image Loss Warning)</h3>
+              <p className="text-sm text-red-800 mt-1">
+                আপনি যদি কম্পিউটার থেকে সরাসরি ইমেজ আপলোড করেন এবং ফায়ারবেস স্টোরেজ বা গুগল ড্রাইভ কনফিগার করা না থাকে, তবে সেই ইমেজগুলো সার্ভার রিস্টার্ট হলে মুছে যাবে। স্থায়ীভাবে ইমেজ সেভ করতে অবশ্যই গুগল ড্রাইভ বা ফায়ারবেস স্টোরেজ ব্যবহার করুন।
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="p-6 border-b border-gray-100 bg-gray-50/50">
           <div className="flex items-center justify-between">
             <div>

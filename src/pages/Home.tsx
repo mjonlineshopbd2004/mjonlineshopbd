@@ -8,7 +8,7 @@ import { getProxyUrl } from '../lib/utils';
 import HeroSection from '../components/HeroSection';
 import ProductCard from '../components/ProductCard';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Star, Quote, Truck, ShieldCheck, RotateCcw, Headphones, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, Star, Quote, Truck, ShieldCheck, RotateCcw, Headphones, ChevronLeft, ChevronRight, Layers } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export default function Home() {
@@ -19,15 +19,15 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const scroll = (direction: 'left' | 'right') => {
-    if (scrollRef.current) {
+  const scroll = (direction: 'left' | 'right', ref: React.RefObject<HTMLDivElement>) => {
+    if (ref.current) {
       const scrollAmount = direction === 'left' ? -200 : 200;
-      scrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      ref.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
     }
   };
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const categoryInterval = setInterval(() => {
       if (scrollRef.current) {
         const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
         if (scrollLeft + clientWidth >= scrollWidth - 10) {
@@ -36,9 +36,11 @@ export default function Home() {
           scrollRef.current.scrollBy({ left: 200, behavior: 'smooth' });
         }
       }
-    }, 6000); // 4s pause + 2s scroll time approx
+    }, 6000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(categoryInterval);
+    };
   }, []);
 
   useEffect(() => {
@@ -91,119 +93,142 @@ export default function Home() {
     fetchProducts();
   }, []);
 
-  const categoryImages: Record<string, string> = {
-    'Bags': 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&q=80&w=600&h=800',
-    'Shoes': 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=600&h=800',
-    'Jewelry': 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&q=80&w=600&h=800',
-    'Electronics': 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=600&h=800'
-  };
-
   return (
-    <div className="space-y-8 md:space-y-20 pb-20">
+    <div className="space-y-4 md:space-y-8 pb-20">
       <HeroSection />
       
       {/* Features Bar */}
       <section className="border-b border-gray-100 bg-white">
-        <div className="container-custom py-8 md:py-10">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-            <div className="flex items-center space-x-3 md:space-x-4">
-              <div className="flex-shrink-0">
-                <Truck className="h-8 w-8 md:h-10 md:h-10 text-[#f15a29]" />
+        <div className="container-custom py-6 md:py-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
+            <div className="flex items-center space-x-3 md:space-x-4 bg-gray-50/50 p-3 rounded-2xl border border-gray-100/50">
+              <div className="flex-shrink-0 w-10 h-10 md:w-12 md:h-12 bg-white rounded-xl shadow-sm flex items-center justify-center">
+                <Truck className="h-5 w-5 md:h-6 md:w-6 text-primary" />
               </div>
               <div>
-                <h3 className="font-bold text-gray-900 text-xs md:text-base">Fast Delivery</h3>
-                <p className="text-[10px] md:text-sm text-gray-500">All over BD</p>
+                <h3 className="font-black text-gray-900 text-[10px] md:text-base uppercase tracking-tight">Fast Delivery</h3>
+                <p className="text-[8px] md:text-sm text-gray-500 font-medium">All over BD</p>
               </div>
             </div>
-            <div className="flex items-center space-x-3 md:space-x-4">
-              <div className="flex-shrink-0">
-                <ShieldCheck className="h-8 w-8 md:h-10 md:h-10 text-[#f15a29]" />
+            <div className="flex items-center space-x-3 md:space-x-4 bg-gray-50/50 p-3 rounded-2xl border border-gray-100/50">
+              <div className="flex-shrink-0 w-10 h-10 md:w-12 md:h-12 bg-white rounded-xl shadow-sm flex items-center justify-center">
+                <ShieldCheck className="h-5 w-5 md:h-6 md:w-6 text-primary" />
               </div>
               <div>
-                <h3 className="font-bold text-gray-900 text-xs md:text-base">Secure Pay</h3>
-                <p className="text-[10px] md:text-sm text-gray-500">bKash, Nagad</p>
+                <h3 className="font-black text-gray-900 text-[10px] md:text-base uppercase tracking-tight">Secure Pay</h3>
+                <p className="text-[8px] md:text-sm text-gray-500 font-medium">bKash, Nagad</p>
               </div>
             </div>
-            <div className="flex items-center space-x-3 md:space-x-4">
-              <div className="flex-shrink-0">
-                <RotateCcw className="h-8 w-8 md:h-10 md:h-10 text-[#f15a29]" />
+            <div className="flex items-center space-x-3 md:space-x-4 bg-gray-50/50 p-3 rounded-2xl border border-gray-100/50">
+              <div className="flex-shrink-0 w-10 h-10 md:w-12 md:h-12 bg-white rounded-xl shadow-sm flex items-center justify-center">
+                <RotateCcw className="h-5 w-5 md:h-6 md:w-6 text-primary" />
               </div>
               <div>
-                <h3 className="font-bold text-gray-900 text-xs md:text-base">Easy Returns</h3>
-                <p className="text-[10px] md:text-sm text-gray-500">7-day policy</p>
+                <h3 className="font-black text-gray-900 text-[10px] md:text-base uppercase tracking-tight">Easy Returns</h3>
+                <p className="text-[8px] md:text-sm text-gray-500 font-medium">7-day policy</p>
               </div>
             </div>
-            <div className="flex items-center space-x-3 md:space-x-4">
-              <div className="flex-shrink-0">
-                <Headphones className="h-8 w-8 md:h-10 md:h-10 text-[#f15a29]" />
+            <div className="flex items-center space-x-3 md:space-x-4 bg-gray-50/50 p-3 rounded-2xl border border-gray-100/50">
+              <div className="flex-shrink-0 w-10 h-10 md:w-12 md:h-12 bg-white rounded-xl shadow-sm flex items-center justify-center">
+                <Headphones className="h-5 w-5 md:h-6 md:w-6 text-primary" />
               </div>
               <div>
-                <h3 className="font-bold text-gray-900 text-xs md:text-base">24/7 Support</h3>
-                <p className="text-[10px] md:text-sm text-gray-500">WhatsApp</p>
+                <h3 className="font-black text-gray-900 text-[10px] md:text-base uppercase tracking-tight">24/7 Support</h3>
+                <p className="text-[8px] md:text-sm text-gray-500 font-medium">WhatsApp</p>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Categories */}
+      {/* Trending Products */}
       <section className="container-custom">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
-          <div>
-            <h2 className="text-xl font-black text-gray-900 tracking-tight font-display uppercase">Top Category</h2>
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white shadow-lg">
+              <Star className="h-4 w-4 fill-current" />
+            </div>
+            <h2 className="text-xl font-black text-gray-900 tracking-tight font-display uppercase">Trending Products</h2>
           </div>
-          <div className="h-1 w-24 bg-primary rounded-full hidden md:block"></div>
+          <Link to="/products" className="bg-primary/5 text-primary px-4 py-2 rounded-full font-bold text-xs flex items-center gap-2 hover:bg-primary hover:text-white transition-all">
+            View More <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+        
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3">
+          {loading ? (
+            [...Array(8)].map((_, i) => (
+              <div key={i} className="animate-pulse bg-white rounded-2xl h-[280px]"></div>
+            ))
+          ) : (
+            trendingProducts.map(product => (
+              <ProductCard key={product.id} product={product} />
+            ))
+          )}
+        </div>
+      </section>
+
+      {/* Categories Section */}
+      <section className="container-custom">
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+              <Layers className="h-4 w-4" />
+            </div>
+            <h2 className="text-xl font-black text-gray-900 tracking-tight font-display uppercase">Top Categories</h2>
+          </div>
+          <Link to="/categories" className="text-primary font-bold text-xs hover:underline">
+            See All
+          </Link>
         </div>
         
         <div className="relative group">
-          {/* Arrows */}
-          <button 
-            onClick={() => scroll('left')}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-white/80 backdrop-blur-sm p-2 rounded-full shadow-lg border border-gray-100 hover:bg-white transition-all opacity-0 group-hover:opacity-100 hidden md:block"
-          >
-            <ChevronLeft className="h-5 w-5 text-gray-600" />
-          </button>
-          <button 
-            onClick={() => scroll('right')}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-white/80 backdrop-blur-sm p-2 rounded-full shadow-lg border border-gray-100 hover:bg-white transition-all opacity-0 group-hover:opacity-100 hidden md:block"
-          >
-            <ChevronRight className="h-5 w-5 text-gray-600" />
-          </button>
-
-          {/* Mobile Arrows (always visible) */}
-          <div className="md:hidden absolute -left-2 top-1/2 -translate-y-1/2 z-20">
-            <button onClick={() => scroll('left')} className="p-1 text-gray-400"><ChevronLeft className="h-4 w-4" /></button>
-          </div>
-          <div className="md:hidden absolute -right-2 top-1/2 -translate-y-1/2 z-20">
-            <button onClick={() => scroll('right')} className="p-1 text-gray-400"><ChevronRight className="h-4 w-4" /></button>
-          </div>
-          
           <div 
             ref={scrollRef}
-            className="flex gap-6 md:gap-10 py-2 overflow-x-auto no-scrollbar scroll-smooth px-4"
+            className="flex gap-4 md:gap-8 py-2 overflow-x-auto no-scrollbar scroll-smooth px-2"
           >
             {(settings.categories && settings.categories.length > 0 ? settings.categories : CATEGORIES).map((category, idx) => {
               const name = typeof category === 'string' ? category : category.name;
-              const image = typeof category === 'string' ? `https://picsum.photos/seed/${category}/200/200` : category.image;
+              const image = typeof category === 'string' ? null : category.image;
+              const proxyUrl = getProxyUrl(image);
               
               return (
                 <Link
                   key={`${name}-${idx}`}
                   to={`/products?category=${encodeURIComponent(name)}`}
-                  className="flex flex-col items-center gap-2 flex-shrink-0"
+                  className="flex flex-col items-center gap-3 flex-shrink-0 group/cat"
                 >
-                  <div className="relative w-16 h-16 md:w-24 md:h-24 overflow-hidden rounded-full border-2 border-gray-100 hover:border-primary transition-all duration-300 shadow-sm">
-                    <img
-                      src={getProxyUrl(image || `https://picsum.photos/seed/${name}/200/200`)}
-                      alt={name}
-                      className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="absolute bottom-0 left-0 right-0 bg-orange-50/90 py-0.5">
-                      <p className="text-[7px] md:text-[9px] font-bold text-orange-600 text-center">From 80৳</p>
-                    </div>
+                  <div className="relative w-20 h-20 md:w-28 md:h-28 overflow-hidden rounded-2xl border border-gray-100 group-hover/cat:border-primary transition-all duration-500 shadow-sm bg-gray-50">
+                    {proxyUrl ? (
+                      <img
+                        src={proxyUrl}
+                        alt={name}
+                        className="w-full h-full object-cover group-hover/cat:scale-110 transition-transform duration-700"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent) {
+                            const placeholder = document.createElement('div');
+                            placeholder.className = 'w-full h-full flex flex-col items-center justify-center bg-gray-100 text-gray-400 p-2 text-center';
+                            placeholder.innerHTML = `
+                              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image opacity-20 mb-1"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                              <span class="text-[8px] font-bold uppercase tracking-tighter">No Image</span>
+                            `;
+                            parent.appendChild(placeholder);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100 text-gray-400 p-2 text-center">
+                        <Layers className="h-8 w-8 opacity-20 mb-1" />
+                        <span className="text-[8px] font-bold uppercase tracking-tighter">No Image</span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover/cat:opacity-100 transition-opacity" />
                   </div>
-                  <h3 className="text-[9px] md:text-xs font-bold text-gray-900 text-center tracking-tight leading-tight max-w-[64px] md:max-w-[96px] truncate">{name}</h3>
+                  <h3 className="text-[10px] md:text-sm font-black text-gray-900 text-center tracking-tight leading-tight max-w-[80px] md:max-w-[112px] truncate uppercase">{name}</h3>
                 </Link>
               );
             })}
@@ -261,32 +286,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Trending Products */}
-      <section className="container-custom">
-        <div className="flex justify-between items-center mb-8">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white shadow-lg">
-              <Star className="h-4 w-4 fill-current" />
-            </div>
-            <h2 className="text-xl font-black text-gray-900 tracking-tight font-display uppercase">Trending Products</h2>
-          </div>
-          <Link to="/products" className="bg-primary/5 text-primary px-4 py-2 rounded-full font-bold text-xs flex items-center gap-2 hover:bg-primary hover:text-white transition-all">
-            View More <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3">
-          {loading ? (
-            [...Array(12)].map((_, i) => (
-              <div key={i} className="animate-pulse bg-white rounded-2xl h-[280px]"></div>
-            ))
-          ) : (
-            trendingProducts.map(product => (
-              <ProductCard key={product.id} product={product} />
-            ))
-          )}
-        </div>
-      </section>
-
       {/* Reviews */}
       <section className="bg-orange-600 py-24 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
@@ -318,30 +317,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Newsletter */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-gray-900 rounded-[3rem] p-12 md:p-20 text-center relative overflow-hidden">
-          <div className="relative z-10">
-            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 tracking-tight">Join Our Newsletter</h2>
-            <p className="text-gray-400 text-lg mb-10 max-w-2xl mx-auto">
-              Subscribe to get special offers, free giveaways, and once-in-a-lifetime deals.
-            </p>
-            <form className="flex flex-col sm:flex-row gap-4 max-w-lg mx-auto">
-              <input
-                type="email"
-                placeholder="Enter your email"
-                className="flex-1 bg-white/10 border border-white/20 rounded-2xl px-6 py-4 text-white focus:ring-2 focus:ring-orange-500 outline-none"
-                required
-              />
-              <button className="bg-orange-600 text-white px-8 py-4 rounded-2xl font-bold hover:bg-orange-700 transition-all shadow-lg">
-                Subscribe
-              </button>
-            </form>
-          </div>
-          <div className="absolute -top-24 -right-24 w-64 h-64 bg-orange-600/20 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-orange-600/20 rounded-full blur-3xl"></div>
-        </div>
-      </section>
     </div>
   );
 }

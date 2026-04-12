@@ -3,6 +3,21 @@ import { getDb } from '../config/firebase';
 import { Order, OrderStatus, PaymentMethod } from '../models/types';
 import { syncOrderToSheet } from '../services/googleSheetService';
 
+export const getNextOrderId = async (req: Request, res: Response) => {
+  try {
+    const db = getDb();
+    const counterRef = db.collection('counters').doc('order_id');
+    const counterDoc = await counterRef.get();
+    let nextId = 2026;
+    if (counterDoc.exists) {
+      nextId = counterDoc.data()?.value || 2026;
+    }
+    res.json({ nextId: nextId.toString() });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching next ID' });
+  }
+};
+
 export const createOrder = async (req: any, res: Response) => {
   const { 
     items, 

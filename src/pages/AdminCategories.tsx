@@ -75,7 +75,7 @@ const DEFAULT_SETTINGS = {
   email: 'mjonlineshopbd@gmail.com',
   deliveryChargeInside: 60,
   deliveryChargeOutside: 120,
-  categories: CATEGORIES.map(name => ({ name, image: `https://picsum.photos/seed/${name}/600/800` })),
+  categories: CATEGORIES.map(name => ({ name, image: '' })),
   banners: []
 };
 
@@ -223,13 +223,13 @@ export default function AdminCategories() {
   };
 
   const SUGGESTED_CATEGORIES = [
-    { name: 'Shoes', image: 'https://picsum.photos/seed/shoes/600/800' },
-    { name: 'Bags', image: 'https://picsum.photos/seed/bags/600/800' },
-    { name: 'Jewelry', image: 'https://picsum.photos/seed/jewelry/600/800' },
-    { name: 'Women\'s Clothing', image: 'https://picsum.photos/seed/women-clothing/600/800' },
-    { name: 'Watches', image: 'https://picsum.photos/seed/watches/600/800' },
-    { name: 'Electronics & Gadgets', image: 'https://picsum.photos/seed/electronics/600/800' },
-    { name: 'Home & Kitchen', image: 'https://picsum.photos/seed/kitchen/600/800' },
+    { name: 'Shoes', image: '' },
+    { name: 'Bags', image: '' },
+    { name: 'Jewelry', image: '' },
+    { name: 'Women\'s Clothing', image: '' },
+    { name: 'Watches', image: '' },
+    { name: 'Electronics & Gadgets', image: '' },
+    { name: 'Home & Kitchen', image: '' },
   ];
 
   const handleQuickAdd = async (suggested: Category) => {
@@ -287,7 +287,29 @@ export default function AdminCategories() {
                 className="flex flex-col items-center gap-2 p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-primary/10 hover:border-primary/50 transition-all group disabled:opacity-50"
               >
                 <div className="h-12 w-12 rounded-xl overflow-hidden bg-white/5">
-                  <img src={getProxyUrl(suggested.image)} alt="" className="h-full w-full object-cover group-hover:scale-110 transition-transform" />
+                  {getProxyUrl(suggested.image) ? (
+                    <img 
+                      src={getProxyUrl(suggested.image)!} 
+                      alt="" 
+                      className="h-full w-full object-cover group-hover:scale-110 transition-transform" 
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent) {
+                          const placeholder = document.createElement('div');
+                          placeholder.className = 'w-full h-full flex items-center justify-center bg-white/5 text-gray-600';
+                          placeholder.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>';
+                          parent.appendChild(placeholder);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center bg-white/5 text-gray-600">
+                      <ImageIcon className="h-6 w-6" />
+                    </div>
+                  )}
                 </div>
                 <span className="text-[10px] font-black uppercase tracking-widest text-center">{suggested.name}</span>
               </button>
@@ -333,7 +355,12 @@ export default function AdminCategories() {
                   <div className="relative">
                     {editCategory.image ? (
                       <div className="relative aspect-video rounded-2xl overflow-hidden border border-white/10 group/img">
-                        <img src={getProxyUrl(editCategory.image)} alt="" className="w-full h-full object-cover" />
+                        <img 
+                          src={getProxyUrl(editCategory.image)} 
+                          alt="" 
+                          className="w-full h-full object-cover" 
+                          referrerPolicy="no-referrer"
+                        />
                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-4">
                           <label className="cursor-pointer bg-white text-black px-6 py-2 rounded-xl font-black text-xs hover:scale-105 transition-transform">
                             Change
@@ -417,7 +444,12 @@ export default function AdminCategories() {
                   <div className="relative">
                     {newCategory.image ? (
                       <div className="relative aspect-video rounded-2xl overflow-hidden border border-white/10 group/img">
-                        <img src={getProxyUrl(newCategory.image)} alt="" className="w-full h-full object-cover" />
+                        <img 
+                          src={getProxyUrl(newCategory.image)} 
+                          alt="" 
+                          className="w-full h-full object-cover" 
+                          referrerPolicy="no-referrer"
+                        />
                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-4">
                           <label className="cursor-pointer bg-white text-black px-6 py-2 rounded-xl font-black text-xs hover:scale-105 transition-transform">
                             Change
@@ -481,8 +513,24 @@ export default function AdminCategories() {
                   className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 group hover:bg-white/10 transition-all"
                 >
                   <div className="h-16 w-16 rounded-xl overflow-hidden bg-white/5 flex-shrink-0">
-                    {category.image ? (
-                      <img src={getProxyUrl(category.image)} alt={category.name} className="h-full w-full object-cover" />
+                    {getProxyUrl(category.image) ? (
+                      <img 
+                        src={getProxyUrl(category.image)!} 
+                        alt={category.name} 
+                        className="h-full w-full object-cover" 
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent) {
+                            const placeholder = document.createElement('div');
+                            placeholder.className = 'w-full h-full flex items-center justify-center bg-white/5 text-gray-600';
+                            placeholder.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>';
+                            parent.appendChild(placeholder);
+                          }
+                        }}
+                      />
                     ) : (
                       <div className="h-full w-full flex items-center justify-center">
                         <ImageIcon className="h-6 w-6 text-gray-600" />

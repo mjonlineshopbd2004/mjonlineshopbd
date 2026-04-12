@@ -61,6 +61,7 @@ export const uploadFile = async (file: File, idToken: string): Promise<string | 
 
     const response = await fetch('/api/upload/single', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: {
         'Authorization': `Bearer ${idToken}`,
         'X-Requested-With': 'XMLHttpRequest',
@@ -92,6 +93,9 @@ export const uploadFile = async (file: File, idToken: string): Promise<string | 
       
       // If it looks like HTML, it might be a bot protection or error page
       if (text.trim().startsWith('<!doctype html') || text.trim().startsWith('<html')) {
+        if (text.includes('<title>Cookie check</title>') || text.includes('Cookie check')) {
+          throw new Error('Session challenge detected. Please refresh the page and try again.');
+        }
         throw new Error('Server returned an HTML page instead of JSON. This often happens when a request is blocked by a security layer or if the server is down.');
       }
       
@@ -118,6 +122,7 @@ export const uploadMultipleFiles = async (files: FileList | File[], idToken: str
 
     const response = await fetch('/api/upload/multiple', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: {
         'Authorization': `Bearer ${idToken}`,
         'X-Requested-With': 'XMLHttpRequest',
@@ -149,6 +154,9 @@ export const uploadMultipleFiles = async (files: FileList | File[], idToken: str
       
       // If it looks like HTML, it might be a bot protection or error page
       if (text.trim().startsWith('<!doctype html') || text.trim().startsWith('<html')) {
+        if (text.includes('<title>Cookie check</title>') || text.includes('Cookie check')) {
+          throw new Error('Session challenge detected. Please refresh the page and try again.');
+        }
         throw new Error('Server returned an HTML page instead of JSON. This often happens when a request is blocked by a security layer or if the server is down.');
       }
       

@@ -400,20 +400,6 @@ export const getProductsFromSheet = async () => {
         ] 
       });
       
-      // Add a sample row
-      await sheet.addRow({
-        'Product ID': 'SAMPLE-001',
-        'Name': 'Sample Product Name',
-        'Price': 1000,
-        'Discount Price': 800,
-        'Category': 'Men',
-        'Stock': 10,
-        'Rating': 5,
-        'Reviews Count': 1,
-        'Images': 'https://picsum.photos/800/1000',
-        'Last Updated': new Date().toLocaleString()
-      });
-      
       throw new Error('The "Products" sheet was missing. I have created it for you in your Google Sheet. Please fill it with your product data and try syncing again.');
     }
 

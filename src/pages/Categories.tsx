@@ -16,7 +16,7 @@ export default function Categories() {
       <div className="grid grid-cols-1 gap-4">
         {categories.map((category) => {
           const name = typeof category === 'string' ? category : category.name;
-          const image = typeof category === 'string' ? `https://picsum.photos/seed/${category}/400/400` : category.image;
+          const image = typeof category === 'string' ? '' : category.image;
           
           return (
             <Link
@@ -24,12 +24,33 @@ export default function Categories() {
               to={`/products?category=${encodeURIComponent(name)}`}
               className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all group"
             >
-              <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border border-gray-50">
-                <img 
-                  src={getProxyUrl(image || `https://picsum.photos/seed/${name}/400/400`)} 
-                  alt={name} 
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                />
+              <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border border-gray-50 bg-gray-50 flex items-center justify-center">
+                {getProxyUrl(image) ? (
+                  <img 
+                    src={getProxyUrl(image)!} 
+                    alt={name} 
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent) {
+                        const placeholder = document.createElement('div');
+                        placeholder.className = 'w-full h-full flex flex-col items-center justify-center bg-gray-100 text-gray-400 p-1 text-center';
+                        placeholder.innerHTML = `
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image opacity-20 mb-1"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                          <span class="text-[8px] font-bold uppercase tracking-tighter leading-none">No Image</span>
+                        `;
+                        parent.appendChild(placeholder);
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100 text-gray-400 p-1 text-center">
+                    <div className="text-gray-300 font-black text-xl mb-0.5">{name.charAt(0)}</div>
+                    <span className="text-[8px] font-bold uppercase tracking-tighter leading-none">No Image</span>
+                  </div>
+                )}
               </div>
               <div className="flex-1">
                 <h3 className="font-bold text-gray-900 text-lg group-hover:text-primary transition-colors">{name}</h3>

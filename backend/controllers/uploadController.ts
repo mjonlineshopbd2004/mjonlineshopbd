@@ -61,6 +61,7 @@ export const ensureDriveConfigured = async (forceRefresh = false) => {
 
 export const uploadFile = async (req: Request, res: Response) => {
   console.log('uploadFile controller reached');
+  let lastError = '';
   try {
     if (!req.file) {
       console.warn('No file in request');
@@ -84,8 +85,9 @@ export const uploadFile = async (req: Request, res: Response) => {
         }
         return res.status(200).json({ url: firebaseUrl });
       }
-    } catch (firebaseError) {
-      console.warn('Firebase Storage upload failed, trying Google Drive:', firebaseError);
+    } catch (firebaseError: any) {
+      console.warn('Firebase Storage upload failed, trying Google Drive:', firebaseError.message);
+      lastError = firebaseError.message;
     }
 
     await ensureDriveConfigured();
@@ -110,6 +112,7 @@ export const uploadFile = async (req: Request, res: Response) => {
         }
       } catch (driveError: any) {
         console.warn('Google Drive upload failed, falling back to local storage:', driveError.message);
+        lastError = driveError.message;
       }
     } else {
       console.log('Google Drive not configured, falling back to local storage.');
@@ -118,10 +121,16 @@ export const uploadFile = async (req: Request, res: Response) => {
     // 3. Fallback to local storage (Last resort)
     console.log('Using local storage fallback for file:', req.file.filename);
     const fileUrl = `/uploads/${req.file.filename}`;
-    res.status(200).json({ url: fileUrl });
-  } catch (error) {
+    
+    // If we have a specific error from cloud services, include it in the response
+    // but still return the local URL so the app doesn't break
+    res.status(200).json({ 
+      url: fileUrl,
+      warning: lastError ? `Cloud upload failed: ${lastError}. Using local storage fallback.` : undefined
+    });
+  } catch (error: any) {
     console.error('Upload error:', error);
-    res.status(500).json({ message: 'Error uploading file' });
+    res.status(500).json({ message: error.message || 'Error uploading file' });
   }
 };
 
@@ -139,6 +148,7 @@ export const uploadMultipleFiles = async (req: Request, res: Response) => {
 
     for (const file of files) {
       let uploadedUrl = null;
+      let fileError = '';
 
       // 1. Try Firebase Storage
       try {
@@ -147,8 +157,9 @@ export const uploadMultipleFiles = async (req: Request, res: Response) => {
           file.originalname,
           file.mimetype
         );
-      } catch (firebaseError) {
-        console.error('Firebase Storage upload failed for file:', file.filename, firebaseError);
+      } catch (firebaseError: any) {
+        console.error('Firebase Storage upload failed for file:', file.filename, firebaseError.message);
+        fileError = firebaseError.message;
       }
 
       // 2. Try Google Drive if Firebase failed
@@ -161,8 +172,9 @@ export const uploadMultipleFiles = async (req: Request, res: Response) => {
               file.filename,
               file.mimetype
             );
-          } catch (driveError) {
-            console.error('Google Drive upload failed for file:', file.filename, driveError);
+          } catch (driveError: any) {
+            console.error('Google Drive upload failed for file:', file.filename, driveError.message);
+            fileError = driveError.message;
           }
         }
       }
@@ -174,6 +186,7 @@ export const uploadMultipleFiles = async (req: Request, res: Response) => {
         fileUrls.push(uploadedUrl);
       } else {
         // 3. Fallback to local
+        console.warn(`All cloud uploads failed for ${file.filename}: ${fileError}. Using local fallback.`);
         fileUrls.push(`/uploads/${file.filename}`);
       }
     }

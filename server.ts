@@ -40,7 +40,12 @@ async function startServer() {
   const PORT = Number(process.env.PORT) || 3000;
 
   // Standard Middlewares
-  app.use(cors());
+  app.use(cors({
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+  }));
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -84,12 +89,14 @@ async function startServer() {
     if (!imageUrl.startsWith('http')) imageUrl = 'https://' + imageUrl;
 
     const serveFallback = () => {
-      const fallbackUrl = `https://picsum.photos/seed/${encodeURIComponent(imageUrl.slice(-10))}/600/800`;
-      res.redirect(fallbackUrl);
+      const transparentPixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.send(transparentPixel);
     };
 
     try {
-      const fetchImage = async (url: string, referer: string = '') => {
+      const fetchImage = async (url: string, referer: string = '', useDefaultHeaders: boolean = true) => {
         let origin = '';
         try {
           origin = new URL(url).origin;
@@ -98,21 +105,43 @@ async function startServer() {
         }
 
         const headers: Record<string, string> = {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
           'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
           'Accept-Language': 'en-US,en;q=0.9',
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache',
-          'Referer': referer || origin,
         };
 
-        const response = await fetch(url, {
-          headers,
-          signal: AbortSignal.timeout(5000), // Reduced from 8000 to fit Vercel 10s limit
-          redirect: 'follow',
-        });
+        if (referer) {
+          headers['Referer'] = referer;
+        } else if (useDefaultHeaders) {
+          headers['Referer'] = origin;
+        }
 
-        return response;
+        try {
+          let response = await fetch(url, {
+            headers,
+            signal: AbortSignal.timeout(15000),
+            redirect: 'follow',
+          });
+
+          if (!response.ok && response.status !== 404) {
+            // Try one more time with NO referer if it failed
+            const { Referer, ...headersWithoutReferer } = headers;
+            response = await fetch(url, {
+              headers: headersWithoutReferer,
+              signal: AbortSignal.timeout(10000),
+            });
+          }
+
+          return response;
+        } catch (e) {
+          try {
+            return await fetch(url, { signal: AbortSignal.timeout(10000) });
+          } catch (err) {
+            return { ok: false, status: 500 } as any;
+          }
+        }
       };
 
       let referer = '';
@@ -126,11 +155,25 @@ async function startServer() {
         referer = 'https://www.facebook.com/';
       } else if (imageUrl.includes('googleusercontent.com')) {
         referer = 'https://www.google.com/';
+      } else if (imageUrl.includes('vecteezy.com')) {
+        referer = 'https://www.vecteezy.com/';
+      } else if (imageUrl.includes('tblbd.com')) {
+        referer = 'https://www.tblbd.com/';
+      } else if (imageUrl.includes('githubusercontent.com')) {
+        referer = 'https://github.com/';
       }
 
       let response = await fetchImage(imageUrl, referer);
       
-      // If 404 and it's an alicdn URL, try different subdomains and patterns
+      // If 403 or 401, try without referer and minimal headers
+      if ((response.status === 403 || response.status === 401) && !imageUrl.includes('alicdn.com')) {
+        const retryResponse = await fetchImage(imageUrl, '', false);
+        if (retryResponse.ok) {
+          response = retryResponse;
+        }
+      }
+
+      // If still 404 and it's an alicdn URL, try different subdomains
       if (response.status === 404 && imageUrl.includes('alicdn.com')) {
         const subdomains = ['img.alicdn.com', 'cbu01.alicdn.com', 'gw.alicdn.com', 'ae01.alicdn.com'];
         const currentSubdomain = subdomains.find(s => imageUrl.includes(s));
@@ -152,7 +195,18 @@ async function startServer() {
 
       if (!response.ok) {
         console.error(`Image proxy error: Source returned ${response.status} for URL: ${imageUrl}`);
-        return serveFallback();
+        
+        // If it's a 403/401, try a final attempt with NO headers at all
+        if (response.status === 403 || response.status === 401) {
+          try {
+            const finalResponse = await fetch(imageUrl, { signal: AbortSignal.timeout(5000) });
+            if (finalResponse.ok) {
+              response = finalResponse;
+            }
+          } catch (e) {}
+        }
+        
+        if (!response.ok) return serveFallback();
       }
 
       const contentType = response.headers.get('content-type') || 'image/jpeg';

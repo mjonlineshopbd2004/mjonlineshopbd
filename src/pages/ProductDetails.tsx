@@ -25,7 +25,7 @@ export default function ProductDetails() {
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState<number | string>('');
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [canReview, setCanReview] = useState(false);
@@ -241,12 +241,14 @@ export default function ProductDetails() {
   const discount = calculateDiscount(product.price, product.discountPrice);
 
   const handleAddToCart = () => {
-    addItem(product, quantity, selectedSize, selectedColor);
+    const q = typeof quantity === 'string' ? (parseInt(quantity) || 0) : quantity;
+    addItem(product, q, selectedSize, selectedColor);
     toast.success(`${product.name} added to cart!`);
   };
 
   const handleBuyNow = () => {
-    addItem(product, quantity, selectedSize, selectedColor);
+    const q = typeof quantity === 'string' ? (parseInt(quantity) || 0) : quantity;
+    addItem(product, q, selectedSize, selectedColor);
     navigate('/checkout');
   };
 
@@ -271,8 +273,13 @@ export default function ProductDetails() {
               referrerPolicy="no-referrer"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                if (!target.src.includes('picsum.photos')) {
-                  target.src = `https://picsum.photos/seed/${product.id}-${activeImage}/600/800`;
+                target.style.display = 'none';
+                const parent = target.parentElement;
+                if (parent && !parent.querySelector('.no-image-placeholder')) {
+                  const placeholder = document.createElement('div');
+                  placeholder.className = 'no-image-placeholder w-full h-full flex flex-col items-center justify-center bg-gray-100 text-gray-400';
+                  placeholder.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image-off h-12 w-12 mb-2"><line x1="2" x2="22" y1="2" y2="22"/><path d="M10.41 10.41a2 2 0 1 1-2.82-2.82"/><line x1="10" x2="21" y1="15" y2="15"/><path d="M21 8v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/><path d="m3 16 5-5 3 3"/></svg><span class="text-xs font-bold uppercase tracking-widest">No Image</span>';
+                  parent.appendChild(placeholder);
                 }
               }}
             />
@@ -328,8 +335,13 @@ export default function ProductDetails() {
                   referrerPolicy="no-referrer" 
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
-                    if (!target.src.includes('picsum.photos')) {
-                      target.src = `https://picsum.photos/seed/${product.id}-thumb-${idx}/200/200`;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent && !parent.querySelector('.no-image-placeholder')) {
+                      const placeholder = document.createElement('div');
+                      placeholder.className = 'no-image-placeholder w-full h-full flex flex-col items-center justify-center bg-gray-100 text-gray-400';
+                      placeholder.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image-off h-6 w-6"><line x1="2" x2="22" y1="2" y2="22"/><path d="M10.41 10.41a2 2 0 1 1-2.82-2.82"/><line x1="10" x2="21" y1="15" y2="15"/><path d="M21 8v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/><path d="m3 16 5-5 3 3"/></svg>';
+                      parent.appendChild(placeholder);
                     }
                   }}
                 />
@@ -448,8 +460,13 @@ export default function ProductDetails() {
                           referrerPolicy="no-referrer" 
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            if (!target.src.includes('picsum.photos')) {
-                              target.src = `https://picsum.photos/seed/${product.id}-variant-${idx}/100/100`;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent && !parent.querySelector('.no-image-placeholder')) {
+                              const placeholder = document.createElement('div');
+                              placeholder.className = 'no-image-placeholder w-full h-full flex flex-col items-center justify-center bg-gray-100 text-gray-400';
+                              placeholder.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image-off h-4 w-4"><line x1="2" x2="22" y1="2" y2="22"/><path d="M10.41 10.41a2 2 0 1 1-2.82-2.82"/><line x1="10" x2="21" y1="15" y2="15"/><path d="M21 8v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/><path d="m3 16 5-5 3 3"/></svg>';
+                              parent.appendChild(placeholder);
                             }
                           }}
                         />
@@ -515,14 +532,42 @@ export default function ProductDetails() {
               <div className="flex items-center space-x-4">
                 <div className="flex items-center bg-gray-50 rounded-2xl p-1 border border-gray-100">
                   <button
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    onClick={() => {
+                      const current = typeof quantity === 'string' ? (parseInt(quantity) || 0) : quantity;
+                      setQuantity(Math.max(0, current - 1));
+                    }}
                     className="p-3 text-gray-400 hover:text-gray-900 hover:bg-white hover:shadow-sm rounded-xl transition-all"
                   >
                     <Minus className="h-5 w-5" />
                   </button>
-                  <span className="w-12 text-center font-bold text-xl text-gray-900">{quantity}</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={quantity}
+                    onChange={(e) => {
+                      let val = e.target.value;
+                      // Remove non-numeric characters
+                      val = val.replace(/\D/g, '');
+                      // Remove leading zeros
+                      if (val.length > 1) {
+                        val = val.replace(/^0+/, '');
+                      }
+                      
+                      if (val === '') {
+                        setQuantity('');
+                      } else {
+                        const numVal = parseInt(val);
+                        setQuantity(Math.min(product.stock, numVal));
+                      }
+                    }}
+                    placeholder="0"
+                    className="w-12 text-center font-bold text-xl text-gray-900 bg-transparent outline-none"
+                  />
                   <button
-                    onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                    onClick={() => {
+                      const current = typeof quantity === 'string' ? (parseInt(quantity) || 0) : quantity;
+                      setQuantity(Math.min(product.stock, current + 1));
+                    }}
                     className="p-3 text-gray-400 hover:text-gray-900 hover:bg-white hover:shadow-sm rounded-xl transition-all"
                   >
                     <Plus className="h-5 w-5" />
@@ -540,7 +585,7 @@ export default function ProductDetails() {
                   "py-4 rounded-2xl border-2 transition-all flex items-center justify-center space-x-2",
                   isInWishlist(product.id)
                     ? "bg-red-50 border-red-500 text-red-500"
-                    : "bg-white border-gray-100 text-gray-400 hover:border-red-500 hover:text-red-500"
+                    : "bg-white border-orange-600 text-orange-600 hover:bg-orange-50"
                 )}
               >
                 <Heart className={cn("h-5 w-5", isInWishlist(product.id) && "fill-current")} />
@@ -548,7 +593,7 @@ export default function ProductDetails() {
               </button>
               <button
                 onClick={handleAddToCart}
-                disabled={product.stock <= 0}
+                disabled={product.stock <= 0 || (typeof quantity === 'number' ? quantity <= 0 : (parseInt(quantity) || 0) <= 0)}
                 className="bg-white text-orange-600 border-2 border-orange-600 py-4 rounded-2xl font-bold text-sm hover:bg-orange-50 transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ShoppingCart className="h-5 w-5" />
@@ -557,7 +602,7 @@ export default function ProductDetails() {
             </div>
             <button
               onClick={handleBuyNow}
-              disabled={product.stock <= 0}
+              disabled={product.stock <= 0 || (typeof quantity === 'number' ? quantity <= 0 : (parseInt(quantity) || 0) <= 0)}
               className="bg-orange-600 text-white py-4 rounded-2xl font-bold text-sm shadow-lg shadow-orange-100 hover:bg-orange-700 transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ShoppingBag className="h-5 w-5" />

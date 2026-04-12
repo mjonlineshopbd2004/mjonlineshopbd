@@ -5,48 +5,58 @@ import fs from 'fs';
 
 export class FirebaseStorageService {
   public async uploadFile(filePath: string, fileName: string, mimeType: string): Promise<string | null> {
-    try {
-      const storage = getStorageInstance();
-      const bucket = storage.bucket();
-      const destination = `products/${uuidv4()}_${fileName}`;
-      
-      console.log(`Attempting Firebase Storage upload to bucket: ${bucket.name}, destination: ${destination}`);
-
-      // Use file.save() for better reliability in some environments
-      const file = bucket.file(destination);
+    const storage = getStorageInstance();
+    let bucket = storage.bucket();
+    const destination = `products/${uuidv4()}_${fileName}`;
+    
+    const performUpload = async (targetBucket: any) => {
+      console.log(`Attempting Firebase Storage upload to bucket: ${targetBucket.name}, destination: ${destination}`);
+      const file = targetBucket.file(destination);
       const fileBuffer = fs.readFileSync(filePath);
       
       await file.save(fileBuffer, {
-        metadata: {
-          contentType: mimeType,
-        },
-        resumable: false, // Disable resumable for small files to avoid some Gaxios errors
+        metadata: { contentType: mimeType },
+        resumable: false,
       });
 
-      // Make the file public
       try {
         await file.makePublic();
-      } catch (publicError: any) {
-        console.warn('Could not make file public via ACL (Uniform bucket-level access might be enabled):', publicError.message);
-        // If makePublic fails, we still return the URL, as the bucket might be public by default
+      } catch (e) {
+        console.warn('Could not make file public, continuing anyway.');
       }
 
-      // Return the public URL
-      return `https://storage.googleapis.com/${bucket.name}/${destination}`;
+      return `https://storage.googleapis.com/${targetBucket.name}/${destination}`;
+    };
+
+    try {
+      return await performUpload(bucket);
     } catch (error: any) {
-      console.error('Error uploading to Firebase Storage:', error);
+      console.error('Initial Firebase Storage upload failed:', error.message);
+      
+      // If bucket not found, try common fallbacks
+      if (error.code === 404 || error.message?.includes('bucket does not exist')) {
+        const projectId = process.env.GOOGLE_CLOUD_PROJECT;
+        const fallbacks = [
+          `${projectId}.appspot.com`,
+          `${projectId}.firebasestorage.app`,
+          projectId
+        ].filter(b => b && b !== bucket.name);
+
+        for (const fallbackName of fallbacks) {
+          try {
+            console.log(`Trying fallback bucket: ${fallbackName}`);
+            const fallbackBucket = storage.bucket(fallbackName as string);
+            return await performUpload(fallbackBucket);
+          } catch (fallbackError: any) {
+            console.warn(`Fallback bucket ${fallbackName} also failed:`, fallbackError.message);
+          }
+        }
+      }
+
+      console.error('All Firebase Storage upload attempts failed.');
       if (error.response) {
         console.error('Firebase Storage API Error Response:', JSON.stringify(error.response.data, null, 2));
       }
-      if (error.code) {
-        console.error('Firebase Storage Error Code:', error.code);
-      }
-      
-      // Provide actionable advice for common errors
-      if (error.message?.includes('storage.objects.create')) {
-        console.error('CRITICAL: Service Account lacks "storage.objects.create" permission. Please grant "Storage Object Admin" or "Firebase Admin" role.');
-      }
-      
       return null;
     }
   }

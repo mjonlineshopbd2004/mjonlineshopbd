@@ -24,7 +24,13 @@ try {
 
 // Explicitly set the project ID in the environment to avoid confusion with the AI Studio project
 const projectId = firebaseConfig.projectId || process.env.GOOGLE_CLOUD_PROJECT;
-const storageBucket = firebaseConfig.storageBucket || (projectId ? `${projectId}.appspot.com` : undefined);
+let storageBucket = firebaseConfig.storageBucket;
+
+// If not in config, try to derive it
+if (!storageBucket && projectId) {
+  // Try .firebasestorage.app first (newer) then .appspot.com (older)
+  storageBucket = `${projectId}.firebasestorage.app`;
+}
 
 if (projectId) {
   process.env.GOOGLE_CLOUD_PROJECT = projectId;

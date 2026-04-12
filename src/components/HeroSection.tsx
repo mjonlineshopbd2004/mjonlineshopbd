@@ -50,7 +50,7 @@ export default function HeroSection() {
   const currentBanner = displayBanners[currentIndex];
 
   return (
-    <div className="container-custom pt-4 pb-4 md:py-8">
+    <div className="container-custom pt-4 pb-2 md:pt-6 md:pb-4">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 h-auto lg:h-[500px]">
         {/* Main Left Banner */}
         <div className="lg:col-span-2 relative overflow-hidden bg-[#f3f9fb] group rounded-2xl md:rounded-none h-[220px] md:h-[400px] lg:h-full">
@@ -81,33 +81,34 @@ export default function HeroSection() {
           <div className="relative z-10 h-full flex flex-col justify-end px-6 md:px-16 py-8 md:py-12">
             <motion.div
               key={`content-${currentIndex}`}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
+              className="max-w-[280px] md:max-w-lg"
             >
               {currentBanner.topText && (
-                <p className="text-primary font-bold uppercase tracking-[0.3em] text-[8px] md:text-xs mb-2 md:mb-4 bg-white inline-block px-3 py-1 md:px-4 md:py-1.5 rounded-sm shadow-sm">
+                <p className="text-primary font-black uppercase tracking-[0.2em] text-[7px] md:text-xs mb-2 md:mb-4 bg-white/90 backdrop-blur-sm inline-block px-2 py-1 md:px-4 md:py-1.5 rounded-full shadow-sm">
                   {currentBanner.topText}
                 </p>
               )}
               <h2 
-                className="text-2xl md:text-4xl font-bold mb-2 md:mb-4 leading-[1.2] tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] font-display"
+                className="text-3xl md:text-5xl font-black mb-2 md:mb-4 leading-[1.1] tracking-tight text-white drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)] font-display uppercase"
               >
                 {currentBanner.title}
               </h2>
               {currentBanner.subtitle && (
                 <p 
-                  className="text-sm md:text-2xl font-medium mb-4 md:mb-8 max-w-lg text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] font-sans"
+                  className="text-xs md:text-2xl font-medium mb-5 md:mb-8 text-white/90 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] font-sans leading-relaxed"
                 >
                   {currentBanner.subtitle}
                 </p>
               )}
               <Link
                 to={currentBanner.link || "/products"}
-                className="inline-flex items-center justify-center px-6 py-2.5 md:px-10 md:py-4 bg-primary text-white font-bold text-sm md:text-lg hover:bg-primary-dark transition-all shadow-2xl shadow-primary/40 group/btn rounded-sm font-sans"
+                className="inline-flex items-center justify-center px-6 py-3 md:px-10 md:py-4 bg-primary text-white font-black text-xs md:text-lg hover:bg-primary-dark transition-all shadow-xl shadow-primary/30 group/btn rounded-full font-sans uppercase tracking-widest"
               >
                 Shop Now
-                <ArrowRight className="ml-2 h-4 w-4 md:h-5 md:w-5 group-hover/btn:translate-x-1 transition-transform" />
+                <ArrowRight className="ml-2 h-3.5 w-3.5 md:h-5 md:w-5 group-hover/btn:translate-x-1 transition-transform" />
               </Link>
             </motion.div>
           </div>
@@ -129,7 +130,7 @@ export default function HeroSection() {
         </div>
 
         {/* Right Side Banner */}
-        <div className="relative overflow-hidden bg-[#fde1b6] p-6 md:p-10 flex flex-col justify-end group rounded-2xl md:rounded-none h-[200px] md:h-[300px] lg:h-full">
+        <div className="hidden lg:flex relative overflow-hidden bg-[#fde1b6] p-6 md:p-10 flex flex-col justify-end group rounded-2xl md:rounded-none h-[200px] md:h-[300px] lg:h-full">
           <div className="absolute inset-0 z-0">
             <AnimatePresence initial={false}>
               {smallBanners.length > 0 ? (

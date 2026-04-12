@@ -51,6 +51,7 @@ router.get('/scraper/status', authenticate, authorize(['admin']), scraperControl
 router.post('/scraper/product', authenticate, authorize(['admin']), scraperController.scrapeProduct);
 
 // Order Routes
+router.get('/orders/next-id', authenticate, orderController.getNextOrderId);
 router.post('/orders', authenticate, orderController.createOrder);
 router.get('/orders/my', authenticate, orderController.getUserOrders);
 router.get('/orders/:id', authenticate, orderController.getOrderById);

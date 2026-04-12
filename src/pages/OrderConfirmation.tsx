@@ -3,7 +3,7 @@ import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Order } from '../types';
-import { CheckCircle2, Package, Truck, ShoppingBag, ArrowRight, MapPin, Phone, User, XCircle, Download, Printer, FileText, Eye } from 'lucide-react';
+import { CheckCircle2, Package, Truck, ShoppingBag, ArrowRight, MapPin, Phone, User, XCircle, Download, Printer, FileText, Eye, ZoomIn, ZoomOut } from 'lucide-react';
 import { formatPrice, cn, getProxyUrl } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -22,6 +22,7 @@ export default function OrderConfirmation() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [scale, setScale] = useState(0.8);
+  const [zoomLevel, setZoomLevel] = useState(1); // 1 = Fit to screen, > 1 = Zoomed
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -29,8 +30,10 @@ export default function OrderConfirmation() {
       if (containerRef.current) {
         const containerWidth = containerRef.current.offsetWidth;
         const baseWidth = 794;
-        // Allow smaller scale for mobile devices
-        const newScale = Math.max(0.1, Math.min(1, (containerWidth - 16) / baseWidth));
+        const fitScale = (containerWidth - 16) / baseWidth;
+        
+        // Final scale is fitScale multiplied by user's zoom level
+        const newScale = Math.max(0.3, fitScale * zoomLevel);
         setScale(newScale);
       }
     };
@@ -39,7 +42,40 @@ export default function OrderConfirmation() {
       window.addEventListener('resize', updateScale);
     }
     return () => window.removeEventListener('resize', updateScale);
-  }, [showInvoiceModal]);
+  }, [showInvoiceModal, zoomLevel]);
+
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [startY, setStartY] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [scrollTop, setScrollTop] = useState(0);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!containerRef.current) return;
+    setIsDragging(true);
+    setStartX(e.pageX - containerRef.current.offsetLeft);
+    setStartY(e.pageY - containerRef.current.offsetTop);
+    setScrollLeft(containerRef.current.scrollLeft);
+    setScrollTop(containerRef.current.scrollTop);
+  };
+
+  const handleMouseLeave = () => setIsDragging(false);
+  const handleMouseUp = () => setIsDragging(false);
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !containerRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - containerRef.current.offsetLeft;
+    const y = e.pageY - containerRef.current.offsetTop;
+    const walkX = (x - startX) * 2;
+    const walkY = (y - startY) * 2;
+    containerRef.current.scrollLeft = scrollLeft - walkX;
+    containerRef.current.scrollTop = scrollTop - walkY;
+  };
+
+  const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.2, 3));
+  const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.2, 0.5));
+  const handleResetZoom = () => setZoomLevel(1);
 
   const paymentStatus = searchParams.get('payment');
 
@@ -178,167 +214,170 @@ export default function OrderConfirmation() {
   }
 
   return (
-    <div className="container-custom py-12">
+    <div className="container-custom py-8 md:py-12">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-gray-100"
+        className="bg-white rounded-[2rem] md:rounded-[3rem] shadow-xl overflow-hidden border border-gray-100 max-w-4xl mx-auto"
       >
         <div className={cn(
-          "p-12 text-center text-white relative overflow-hidden",
+          "p-8 md:p-10 text-center text-white relative overflow-hidden",
           paymentStatus === 'failed' || paymentStatus === 'cancelled' ? "bg-red-600" : "bg-orange-600"
         )}>
           <div className="relative z-10">
-            <div className="bg-white/20 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 backdrop-blur-md">
+            <div className="bg-white/20 w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-md">
               {paymentStatus === 'failed' || paymentStatus === 'cancelled' ? (
-                <XCircle className="h-12 w-12 text-white" />
+                <XCircle className="h-8 w-8 md:h-10 md:w-10 text-white" />
               ) : (
-                <CheckCircle2 className="h-12 w-12 text-white" />
+                <CheckCircle2 className="h-8 w-8 md:h-10 md:w-10 text-white" />
               )}
             </div>
-            <h1 className="text-4xl font-bold tracking-tight mb-2">
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight mb-1 uppercase font-display">
               {paymentStatus === 'failed' || paymentStatus === 'cancelled' ? 'Order Issue' : 'Thank You!'}
             </h1>
-            <p className="text-orange-100 text-lg font-bold">
+            <p className="text-orange-100 text-sm md:text-base font-bold">
               {paymentStatus === 'failed' || paymentStatus === 'cancelled' 
                 ? 'There was an issue with your payment.' 
                 : 'Your order has been placed successfully.'}
             </p>
-            <p className="mt-4 text-orange-200 font-bold uppercase tracking-widest text-sm">Order ID: #{order.id}</p>
+            <div className="mt-4 inline-block bg-black/20 backdrop-blur-sm px-4 py-1.5 rounded-full">
+              <p className="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] text-white">Order ID: #{order.id.slice(-8).toUpperCase()}</p>
+            </div>
           </div>
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
+          <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/10 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl"></div>
         </div>
 
-        <div className="p-8 md:p-12 space-y-12">
-          {/* Order Status */}
-            <div className="flex flex-wrap justify-between gap-4 py-6 border-b border-gray-100">
-              <div className="flex items-center space-x-3 min-w-[140px]">
-                <div className="bg-orange-50 p-3 rounded-xl"><Package className="h-6 w-6 text-orange-600" /></div>
-                <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</p>
-                  <p className="text-lg font-bold tracking-tight text-gray-900 capitalize">{order.status}</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3 min-w-[140px]">
-                <div className="bg-orange-50 p-3 rounded-xl"><Truck className="h-6 w-6 text-orange-600" /></div>
-                <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Delivery</p>
-                  <p className="text-lg font-bold tracking-tight text-gray-900 capitalize">{order.deliveryArea.replace('-', ' ')}</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3 min-w-[140px]">
-                <div className="bg-orange-50 p-3 rounded-xl"><ShoppingBag className="h-6 w-6 text-orange-600" /></div>
-                <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total</p>
-                  <p className="text-lg font-bold tracking-tight text-gray-900">{formatPrice(order.total)}</p>
-                </div>
+        <div className="p-6 md:p-10 space-y-10">
+          {/* Order Status Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex items-center gap-4">
+              <div className="bg-white p-2.5 rounded-xl shadow-sm"><Package className="h-5 w-5 text-orange-600" /></div>
+              <div>
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Status</p>
+                <p className="text-sm font-black text-gray-900 capitalize">{order.status}</p>
               </div>
             </div>
+            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex items-center gap-4">
+              <div className="bg-white p-2.5 rounded-xl shadow-sm"><Truck className="h-5 w-5 text-orange-600" /></div>
+              <div>
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Delivery</p>
+                <p className="text-sm font-black text-gray-900 capitalize">{order.deliveryArea.replace('-', ' ')}</p>
+              </div>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex items-center gap-4">
+              <div className="bg-white p-2.5 rounded-xl shadow-sm"><ShoppingBag className="h-5 w-5 text-orange-600" /></div>
+              <div>
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Total</p>
+                <p className="text-sm font-black text-gray-900">{formatPrice(order.total)}</p>
+              </div>
+            </div>
+          </div>
 
           {/* Customer Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            <div className="space-y-6">
-              <h3 className="text-xl font-bold tracking-tight text-gray-900 flex items-center">
-                <User className="mr-2 h-6 w-6 text-orange-600" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <h3 className="text-base font-black tracking-tight text-gray-900 flex items-center uppercase font-display">
+                <User className="mr-2 h-5 w-5 text-orange-600" />
                 Customer Details
               </h3>
-              <div className="space-y-4 bg-gray-50 p-6 rounded-3xl">
-                <div>
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Name</p>
-                  <p className="font-bold text-gray-900">{order.customerName}</p>
+              <div className="space-y-3 bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
+                <div className="flex justify-between items-center">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Name</p>
+                  <p className="text-xs font-bold text-gray-900">{order.customerName}</p>
                 </div>
-                <div>
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Phone</p>
-                  <p className="font-bold text-gray-900">{order.phone}</p>
+                <div className="flex justify-between items-center">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Phone</p>
+                  <p className="text-xs font-bold text-gray-900">{order.phone}</p>
                 </div>
-                <div>
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Email</p>
-                  <p className="font-bold text-gray-900">{order.customerEmail}</p>
+                <div className="flex justify-between items-center">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Email</p>
+                  <p className="text-xs font-bold text-gray-900 truncate max-w-[150px]">{order.customerEmail}</p>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-6">
-              <h3 className="text-xl font-bold tracking-tight text-gray-900 flex items-center">
-                <MapPin className="mr-2 h-6 w-6 text-orange-600" />
+            <div className="space-y-4">
+              <h3 className="text-base font-black tracking-tight text-gray-900 flex items-center uppercase font-display">
+                <MapPin className="mr-2 h-5 w-5 text-orange-600" />
                 Shipping Address
               </h3>
-              <div className="bg-gray-50 p-6 rounded-3xl h-full">
-                <p className="font-bold text-gray-900 leading-relaxed">{order.address}</p>
+              <div className="bg-gray-50/50 p-5 rounded-2xl border border-gray-100 h-full">
+                <p className="text-xs font-bold text-gray-900 leading-relaxed">{order.address}</p>
               </div>
             </div>
           </div>
 
           {/* Order Items */}
-          <div className="space-y-6">
-            <h3 className="text-xl font-bold tracking-tight text-gray-900">Order Items</h3>
-            <div className="space-y-4">
+          <div className="space-y-4">
+            <h3 className="text-base font-black tracking-tight text-gray-900 uppercase font-display">Order Items</h3>
+            <div className="space-y-3">
               {order.items.map((item, idx) => (
-                <div key={idx} className="flex items-center space-x-4 bg-white border border-gray-100 p-3 sm:p-4 rounded-2xl">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0">
+                <div key={idx} className="flex items-center gap-4 bg-white border border-gray-100 p-3 rounded-2xl hover:shadow-sm transition-shadow">
+                  <div className="w-14 h-14 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0 border border-gray-100">
                     <img src={getProxyUrl(item.images[0])} alt="" className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-gray-900 truncate text-sm sm:text-base">{item.name}</p>
-                    <p className="text-[10px] sm:text-sm text-gray-500 font-bold">
+                    <p className="font-bold text-gray-900 truncate text-xs">{item.name}</p>
+                    <p className="text-[9px] text-gray-500 font-bold mt-0.5">
                       {item.selectedSize && `Size: ${item.selectedSize}`} 
                       {item.selectedColor && ` | Color: ${item.selectedColor}`}
                     </p>
-                    <p className="text-[10px] sm:text-sm text-orange-600 font-bold">Qty: {item.quantity} × {formatPrice(item.discountPrice || item.price)}</p>
+                    <p className="text-[9px] text-orange-600 font-black mt-0.5 uppercase tracking-wider">Qty: {item.quantity} × {formatPrice(item.discountPrice || item.price)}</p>
                   </div>
-                  <p className="font-bold text-gray-900 text-sm sm:text-base">{formatPrice((item.discountPrice || item.price) * item.quantity)}</p>
+                  <p className="font-black text-gray-900 text-xs">{formatPrice((item.discountPrice || item.price) * item.quantity)}</p>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Summary */}
-          <div className="bg-gray-900 text-white p-8 rounded-[2rem] space-y-4">
-            <div className="flex justify-between text-gray-400 font-bold">
+          <div className="bg-gray-900 text-white p-6 rounded-2xl space-y-3 shadow-xl">
+            <div className="flex justify-between text-[10px] text-gray-400 font-black uppercase tracking-widest">
               <span>Subtotal</span>
-              <span>{formatPrice(order.subtotal)}</span>
+              <span className="text-white">{formatPrice(order.subtotal)}</span>
             </div>
-            <div className="flex justify-between text-gray-400 font-bold">
+            <div className="flex justify-between text-[10px] text-gray-400 font-black uppercase tracking-widest">
               <span>Delivery Charge</span>
-              <span>{formatPrice(order.deliveryCharge)}</span>
+              <span className="text-white">{formatPrice(order.deliveryCharge)}</span>
             </div>
-            <div className="border-t border-white/10 pt-4 flex justify-between items-center">
-              <span className="text-xl font-bold tracking-tight">Total Paid</span>
-              <span className="text-3xl font-bold tracking-tight text-orange-500">{formatPrice(order.total)}</span>
+            <div className="border-t border-white/10 pt-3 flex justify-between items-center">
+              <span className="text-sm font-black uppercase tracking-widest">Total Paid</span>
+              <span className="text-xl font-black text-orange-500">{formatPrice(order.total)}</span>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 pt-8">
+          <div className="grid grid-cols-2 gap-3 pt-4">
             <button
               onClick={() => setShowInvoiceModal(true)}
-              className="flex-1 bg-gray-900 text-white py-4 rounded-2xl font-bold text-center hover:bg-black transition-all flex items-center justify-center space-x-2"
+              className="bg-gray-900 text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all flex items-center justify-center gap-2"
             >
-              <Eye className="h-5 w-5" />
+              <Eye className="h-4 w-4" />
               <span>View Invoice</span>
             </button>
             <button
               onClick={handlePrintInvoice}
-              className="flex-1 bg-white border-2 border-gray-900 text-gray-900 py-4 rounded-2xl font-bold text-center hover:bg-gray-50 transition-all flex items-center justify-center space-x-2"
+              className="bg-white border border-gray-900 text-gray-900 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
             >
-              <Printer className="h-5 w-5" />
+              <Printer className="h-4 w-4" />
               <span>Print Invoice</span>
             </button>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 pt-4">
+          <div className="grid grid-cols-2 gap-3">
             <Link
               to="/orders"
-              className="flex-1 bg-gray-100 text-gray-900 py-4 rounded-2xl font-bold text-center hover:bg-gray-200 transition-all flex items-center justify-center space-x-2"
+              className="bg-gray-100 text-gray-900 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
             >
-              <FileText className="h-5 w-5" />
-              <span>View Order History</span>
+              <FileText className="h-4 w-4" />
+              <span>Order History</span>
             </Link>
             <Link
               to="/products"
-              className="flex-1 bg-orange-600 text-white py-4 rounded-2xl font-bold text-center hover:bg-orange-700 transition-all flex items-center justify-center space-x-2"
+              className="bg-orange-600 text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-orange-700 transition-all flex items-center justify-center gap-2"
             >
-              <span>Continue Shopping</span>
-              <ArrowRight className="h-5 w-5" />
+              <span>Shop More</span>
+              <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         </div>
@@ -352,27 +391,88 @@ export default function OrderConfirmation() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-4xl rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col max-h-[95vh]"
+              className="bg-white w-full max-w-4xl rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col h-[90vh] max-h-[95vh]"
             >
-              <div className="p-4 sm:p-6 border-b border-gray-100 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-900">Invoice Preview</h2>
-                <button
-                  onClick={() => setShowInvoiceModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                >
-                  <XCircle className="h-6 w-6 text-gray-400" />
-                </button>
+              <div className="p-4 sm:p-6 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-20">
+                <div>
+                  <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight font-display">Invoice Preview</h2>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Order #{order.id.slice(-8).toUpperCase()}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowInvoiceModal(false)}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <XCircle className="h-6 w-6 text-gray-400" />
+                  </button>
+                </div>
               </div>
 
-              <div className="flex-1 overflow-auto p-2 sm:p-4 bg-gray-50 flex justify-center items-start" ref={containerRef}>
-                <div style={{ 
-                  transform: `scale(${scale})`, 
-                  transformOrigin: 'top center',
-                  width: '794px',
-                  height: '1123px',
-                  marginBottom: `${-1123 * (1 - scale)}px`
-                }}>
-                  <Invoice order={order} settings={settings} />
+              {/* Red Zoom Controls in requested location - Highly Visible */}
+              <div className="bg-white px-6 py-4 flex justify-end items-center border-b border-gray-100 relative z-30">
+                <div className="flex items-center gap-3 bg-gray-50 p-2 rounded-2xl border-2 border-red-100 shadow-sm">
+                  <button
+                    onClick={handleZoomOut}
+                    className="bg-red-600 text-white w-12 h-12 rounded-xl flex items-center justify-center font-black text-2xl shadow-lg shadow-red-200 hover:bg-red-700 active:scale-95 transition-all"
+                    title="Zoom Out"
+                  >
+                    -
+                  </button>
+                  <div className="px-3 flex flex-col items-center min-w-[60px]">
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Zoom</span>
+                    <button 
+                      onClick={handleResetZoom}
+                      className="text-xs font-black text-gray-900 hover:text-red-600 transition-colors"
+                    >
+                      {Math.round(zoomLevel * 100)}%
+                    </button>
+                  </div>
+                  <button
+                    onClick={handleZoomIn}
+                    className="bg-red-600 text-white w-12 h-12 rounded-xl flex items-center justify-center font-black text-2xl shadow-lg shadow-red-200 hover:bg-red-700 active:scale-95 transition-all"
+                    title="Zoom In"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <div 
+                className={cn(
+                  "flex-1 overflow-auto p-4 sm:p-8 bg-gray-100/50 select-none",
+                  isDragging ? "cursor-grabbing" : "cursor-grab"
+                )}
+                ref={containerRef}
+                onMouseDown={handleMouseDown}
+                onMouseLeave={handleMouseLeave}
+                onMouseUp={handleMouseUp}
+                onMouseMove={handleMouseMove}
+              >
+                <div className={cn(
+                  "min-h-full flex items-start pointer-events-none",
+                  scale > 1 ? "justify-start" : "justify-center"
+                )}>
+                  <div 
+                    style={{ 
+                      width: `${794 * scale}px`,
+                      height: `${1123 * scale}px`,
+                      minWidth: `${794 * scale}px`,
+                      minHeight: `${1123 * scale}px`,
+                    }}
+                    className="relative"
+                  >
+                    <div 
+                      className="transition-transform duration-300 ease-in-out shadow-2xl origin-top-left"
+                      style={{ 
+                        transform: `scale(${scale})`, 
+                        width: '794px',
+                        height: '1123px',
+                        backgroundColor: 'white'
+                      }}
+                    >
+                      <Invoice order={order} settings={settings} />
+                    </div>
+                  </div>
                 </div>
               </div>
 

@@ -18,8 +18,8 @@ export function calculateDiscount(price: number, discountPrice?: number) {
   return Math.round(((price - discountPrice) / price) * 100);
 }
 
-export function getProxyUrl(url: string) {
-  if (!url || url.trim() === '') return 'https://picsum.photos/seed/placeholder/600/800';
+export function getProxyUrl(url: string | null | undefined) {
+  if (!url || url.trim() === '') return null;
   
   // Normalize protocol-relative URLs
   const normalizedUrl = url.startsWith('//') ? `https:${url}` : url;
@@ -48,7 +48,10 @@ export function getProxyUrl(url: string) {
     'firebasestorage.googleapis.com',
     'picsum.photos',
     'cloudinary.com',
-    'imgbb.com'
+    'imgbb.com',
+    'raw.githubusercontent.com',
+    'cdn.jsdelivr.net',
+    'logo.clearbit.com'
   ];
 
   try {

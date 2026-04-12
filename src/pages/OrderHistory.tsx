@@ -50,16 +50,50 @@ export default function OrderHistory() {
   const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState<Order | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-  const [scale, setScale] = useState(0.8);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [scale, setScale] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [startY, setStartY] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [scrollTop, setScrollTop] = useState(0);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!containerRef.current) return;
+    setIsDragging(true);
+    setStartX(e.pageX - containerRef.current.offsetLeft);
+    setStartY(e.pageY - containerRef.current.offsetTop);
+    setScrollLeft(containerRef.current.scrollLeft);
+    setScrollTop(containerRef.current.scrollTop);
+  };
+
+  const handleMouseLeave = () => setIsDragging(false);
+  const handleMouseUp = () => setIsDragging(false);
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !containerRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - containerRef.current.offsetLeft;
+    const y = e.pageY - containerRef.current.offsetTop;
+    const walkX = (x - startX) * 2;
+    const walkY = (y - startY) * 2;
+    containerRef.current.scrollLeft = scrollLeft - walkX;
+    containerRef.current.scrollTop = scrollTop - walkY;
+  };
+
+  const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.2, 3));
+  const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.2, 0.5));
+  const handleResetZoom = () => setZoomLevel(1);
 
   useEffect(() => {
     const updateScale = () => {
       if (containerRef.current) {
         const containerWidth = containerRef.current.offsetWidth;
         const baseWidth = 794;
-        const newScale = Math.max(0.1, Math.min(0.8, (containerWidth - 32) / baseWidth));
-        setScale(newScale);
+        const fitScale = Math.max(0.1, (containerWidth - 32) / baseWidth);
+        setScale(fitScale * zoomLevel);
       }
     };
     if (showInvoiceModal) {
@@ -67,7 +101,7 @@ export default function OrderHistory() {
       window.addEventListener('resize', updateScale);
     }
     return () => window.removeEventListener('resize', updateScale);
-  }, [showInvoiceModal]);
+  }, [showInvoiceModal, zoomLevel]);
 
   const handleViewInvoice = (order: Order) => {
     setSelectedOrderForInvoice(order);
@@ -542,19 +576,75 @@ export default function OrderHistory() {
         title="Invoice Preview"
         className="max-w-4xl"
       >
-        <div className="space-y-4">
-          <div className="bg-gray-100 rounded-2xl p-2 sm:p-4 overflow-auto max-h-[80vh] border border-gray-200 flex justify-center items-start" ref={containerRef}>
-            {selectedOrderForInvoice && (
-              <div style={{ 
-                transform: `scale(${scale})`, 
-                transformOrigin: 'top center',
-                width: '794px',
-                height: '1123px',
-                marginBottom: `${-1123 * (1 - scale)}px`
-              }}>
-                <Invoice order={selectedOrderForInvoice} settings={settings} />
+        <div className="space-y-0">
+          {/* Red Zoom Controls in requested location */}
+          <div className="bg-white px-6 py-3 flex justify-end items-center gap-3 border-b border-gray-100">
+            <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100">
+              <button
+                onClick={handleZoomOut}
+                className="bg-red-600 text-white w-10 h-10 rounded-lg flex items-center justify-center font-black text-xl shadow-lg shadow-red-200 hover:bg-red-700 active:scale-95 transition-all"
+                title="Zoom Out"
+              >
+                -
+              </button>
+              <div className="px-2 flex flex-col items-center min-w-[50px]">
+                <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Zoom</span>
+                <button 
+                  onClick={handleResetZoom}
+                  className="text-[10px] font-black text-gray-900 hover:text-red-600 transition-colors"
+                >
+                  {Math.round(zoomLevel * 100)}%
+                </button>
               </div>
+              <button
+                onClick={handleZoomIn}
+                className="bg-red-600 text-white w-10 h-10 rounded-lg flex items-center justify-center font-black text-xl shadow-lg shadow-red-200 hover:bg-red-700 active:scale-95 transition-all"
+                title="Zoom In"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          <div 
+            className={cn(
+              "bg-gray-100/50 p-4 sm:p-8 overflow-auto h-[70vh] border-b border-gray-100 select-none",
+              isDragging ? "cursor-grabbing" : "cursor-grab"
             )}
+            ref={containerRef}
+            onMouseDown={handleMouseDown}
+            onMouseLeave={handleMouseLeave}
+            onMouseUp={handleMouseUp}
+            onMouseMove={handleMouseMove}
+          >
+            <div className={cn(
+              "min-h-full flex items-start pointer-events-none",
+              scale > 1 ? "justify-start" : "justify-center"
+            )}>
+              {selectedOrderForInvoice && (
+                <div 
+                  style={{ 
+                    width: `${794 * scale}px`,
+                    height: `${1123 * scale}px`,
+                    minWidth: `${794 * scale}px`,
+                    minHeight: `${1123 * scale}px`,
+                  }}
+                  className="relative"
+                >
+                  <div 
+                    className="transition-transform duration-300 ease-in-out shadow-2xl origin-top-left"
+                    style={{ 
+                      transform: `scale(${scale})`, 
+                      width: '794px',
+                      height: '1123px',
+                      backgroundColor: 'white'
+                    }}
+                  >
+                    <Invoice order={selectedOrderForInvoice} settings={settings} />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           
           <div className="flex gap-3">
