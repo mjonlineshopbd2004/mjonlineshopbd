@@ -57,8 +57,8 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useLocation } from 'react-router-dom';
 
 import StaticPage from './components/StaticPage';
-
 import BottomNav from './components/BottomNav';
+import { PWAInstallBanner } from './components/PWAInstallBanner';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -131,6 +131,7 @@ function MainLayout() {
       <AuthModal />
       <OfferPopup />
       <CompareFloatingButton />
+      <PWAInstallBanner />
     </div>
   );
 }

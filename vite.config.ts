@@ -13,7 +13,11 @@ export default defineConfig(({mode}) => {
       VitePWA({
         registerType: 'autoUpdate',
         injectRegister: 'auto',
+        devOptions: {
+          enabled: true
+        },
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+        manifestFilename: 'manifest.json',
         manifest: {
           name: 'MJ ONLINE SHOP BD',
           short_name: 'MJ SHOP',
