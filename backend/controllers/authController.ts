@@ -43,9 +43,13 @@ export const sendOTP = async (req: Request, res: Response) => {
     }
 
     if (process.env.RESEND_API_KEY) {
+      console.log('Attempting to send OTP email via Resend...');
+      console.log('Resend API Key starts with:', process.env.RESEND_API_KEY.substring(0, 3));
       try {
+        const fromEmail = 'MJ SHOP <otp@mjonlineshopbd.pro.bd>';
+        console.log('Sending from:', fromEmail);
         const data = await resend.emails.send({
-          from: 'MJ SHOP <otp@mjonlineshopbd.pro.bd>',
+          from: fromEmail,
           to: email,
           subject: isForgotPassword ? 'Password Reset OTP - MJ SHOP' : 'Your Login OTP Code - MJ SHOP',
           html: `
@@ -80,15 +84,21 @@ export const sendOTP = async (req: Request, res: Response) => {
         if (data.error) {
           console.error('Resend API Error:', data.error);
           return res.json({ 
-            message: 'OTP generated (Demo Mode)', 
-            code: otpCode
+            message: 'OTP generated (Demo Mode - Resend Error)', 
+            code: otpCode,
+            debug: data.error
           });
         }
 
+        console.log('OTP Email sent successfully via Resend');
         res.json({ message: 'OTP sent successfully' });
       } catch (emailError: any) {
         console.error('Resend connection error:', emailError);
-        res.json({ message: 'OTP generated (Demo Mode)', code: otpCode });
+        res.json({ 
+          message: 'OTP generated (Demo Mode - Connection Error)', 
+          code: otpCode,
+          debug: emailError.message
+        });
       }
     } else {
       res.json({ message: 'OTP generated (Demo Mode)', code: otpCode });

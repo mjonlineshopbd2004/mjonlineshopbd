@@ -15,7 +15,16 @@ export default function SplashScreen() {
         setIsVisible(false);
       }
     }, 2000);
-    return () => clearTimeout(timer);
+
+    // Safety timeout: Force hide after 5 seconds no matter what
+    const safetyTimer = setTimeout(() => {
+      setIsVisible(false);
+    }, 5000);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(safetyTimer);
+    };
   }, [loading]);
 
   // Hide splash screen once loading is complete (if it took longer than 2s)
@@ -48,50 +57,83 @@ export default function SplashScreen() {
           >
             <div className="relative">
               {settings.logoUrl && !logoError && !loading ? (
-                <img 
+                <motion.img 
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.2, duration: 0.8 }}
                   src={getProxyUrl(settings.logoUrl)} 
                   alt={settings.storeName} 
-                  className="h-24 w-auto" 
+                  className="h-28 w-auto drop-shadow-2xl" 
                   onError={() => setLogoError(true)}
                 />
               ) : (
-                <div className="w-24 h-24 bg-primary rounded-[2rem] flex items-center justify-center text-white font-bold text-5xl shadow-2xl shadow-primary/30">
+                <motion.div 
+                  initial={{ scale: 0.5, opacity: 0, rotate: -10 }}
+                  animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                  transition={{ duration: 0.8, type: "spring" }}
+                  className="w-28 h-28 bg-gradient-to-br from-primary to-primary-dark rounded-[2.5rem] flex items-center justify-center text-white font-bold text-6xl shadow-2xl shadow-primary/40"
+                >
                   {settings.storeName && !loading ? settings.storeName.charAt(0) : 'M'}
-                </div>
+                </motion.div>
               )}
               <motion.div
                 animate={{ 
-                  scale: [1, 1.2, 1],
-                  opacity: [0.3, 0.6, 0.3]
+                  scale: [1, 1.4, 1],
+                  opacity: [0.2, 0.4, 0.2]
                 }}
                 transition={{ 
-                  duration: 2,
+                  duration: 3,
                   repeat: Infinity,
                   ease: "easeInOut"
                 }}
-                className="absolute inset-0 bg-primary/20 rounded-[2rem] -z-10 blur-xl"
+                className="absolute inset-0 bg-primary/30 rounded-[2.5rem] -z-10 blur-2xl"
               />
             </div>
-            <div className="text-center">
-              <h1 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">
+            <div className="text-center mt-4">
+              <motion.h1 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="text-3xl font-black text-gray-900 uppercase tracking-tighter font-display"
+              >
                 {settings.storeName}
-              </h1>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.3em] mt-1">
+              </motion.h1>
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: "100%" }}
+                transition={{ delay: 0.8, duration: 1 }}
+                className="h-0.5 bg-primary/20 mx-auto mt-2 rounded-full"
+              />
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1 }}
+                className="text-[10px] font-black text-primary uppercase tracking-[0.4em] mt-3"
+              >
                 {settings.shopTagline || 'Premium Online Shop'}
-              </p>
+              </motion.p>
             </div>
           </motion.div>
 
-          <div className="absolute bottom-12 flex flex-col items-center gap-4">
-            <div className="w-48 h-1 bg-gray-100 rounded-full overflow-hidden">
-              <motion.div
-                initial={{ width: "0%" }}
-                animate={{ width: "100%" }}
-                transition={{ duration: 1.8, ease: "easeInOut" }}
-                className="h-full bg-primary"
-              />
+          <div className="absolute bottom-16 flex flex-col items-center gap-6">
+            <div className="flex items-center gap-2">
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  animate={{ 
+                    scale: [1, 1.5, 1],
+                    opacity: [0.3, 1, 0.3]
+                  }}
+                  transition={{ 
+                    duration: 1,
+                    repeat: Infinity,
+                    delay: i * 0.2
+                  }}
+                  className="w-2 h-2 bg-primary rounded-full"
+                />
+              ))}
             </div>
-            <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Loading Store...</p>
+            <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Secure Connection</p>
           </div>
         </motion.div>
       )}

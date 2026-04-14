@@ -148,7 +148,15 @@ export const defaultSettings: SiteSettings = {
   imgbbApiKey: '',
   banners: [],
   smallBanners: [],
-  categories: [],
+  categories: [
+    { name: 'Shoes', image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=300&h=300' },
+    { name: 'Bags', image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&q=80&w=300&h=300' },
+    { name: 'Jewelry', image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&q=80&w=300&h=300' },
+    { name: 'Women\'s Clothing', image: 'https://images.unsplash.com/photo-1572804013307-a9a111d72f8b?auto=format&fit=crop&q=80&w=300&h=300' },
+    { name: 'Watches', image: 'https://images.unsplash.com/photo-1546868871-70c122467d8b?auto=format&fit=crop&q=80&w=300&h=300' },
+    { name: 'Electronics & Gadgets', image: 'https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?auto=format&fit=crop&q=80&w=300&h=300' },
+    { name: 'Home & Kitchen', image: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&q=80&w=300&h=300' }
+  ],
   banks: [
     { id: 'nexus', name: 'Nexus', accountName: 'MJ Online Shop', accountNumber: '123.456.7890', logo: 'https://raw.githubusercontent.com/tusharnit/bangladesh-payment-gateways/master/logos/dbbl.png' },
     { id: 'citybank', name: 'City Bank', accountName: 'MJ Online Shop', accountNumber: '123.456.7890', logo: 'https://logo.clearbit.com/thecitybank.com' },
@@ -172,69 +180,74 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'settings', 'site'), (doc) => {
-      if (doc.exists()) {
-        const data = doc.data() as any;
-        
-        // Handle broken/expired OpenAI logo URL
-        if (data.logoUrl && data.logoUrl.includes('files.oaiusercontent.com')) {
-          data.logoUrl = defaultSettings.logoUrl;
-        }
-
-        // Fix broken Vecteezy and Trust Bank logos that return 403/500
-        const fixLogo = (url: string, name?: string) => {
-          if (!url) return url;
-          const lowerUrl = url.toLowerCase();
-          const lowerName = (name || '').toLowerCase();
-
-          // If the URL is from a known problematic domain, replace it with a reliable one
-          if (lowerUrl.includes('vecteezy.com') || lowerUrl.includes('tblbd.com') || lowerUrl.includes('oaiusercontent.com')) {
-            if (lowerName.includes('bkash') || lowerUrl.includes('bkash')) 
-              return 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways/logos/bkash.png';
-            if (lowerName.includes('nagad') || lowerUrl.includes('nagad')) 
-              return 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways/logos/nagad.png';
-            if (lowerName.includes('rocket') || lowerUrl.includes('rocket')) 
-              return 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways/logos/rocket.png';
-            if (lowerName.includes('upay') || lowerUrl.includes('upay')) 
-              return 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways/logos/upay.png';
-            if (lowerName.includes('nexus') || lowerName.includes('dbbl') || lowerUrl.includes('nexus') || lowerUrl.includes('dbbl')) 
-              return 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways/logos/dbbl.png';
-            if (lowerName.includes('visa') || lowerUrl.includes('visa')) 
-              return 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways/logos/visa.png';
-            if (lowerName.includes('mastercard') || lowerUrl.includes('mastercard')) 
-              return 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways/logos/mastercard.png';
-            if (lowerName.includes('trust bank') || lowerUrl.includes('tbl_logo')) 
-              return 'https://logo.clearbit.com/tblbd.com';
+      try {
+        if (doc.exists()) {
+          const data = doc.data() as any;
+          
+          // Handle broken/expired OpenAI logo URL
+          if (data.logoUrl && data.logoUrl.includes('files.oaiusercontent.com')) {
+            data.logoUrl = defaultSettings.logoUrl;
           }
-          return url;
-        };
 
-        if (data.bkashLogo) data.bkashLogo = fixLogo(data.bkashLogo, 'bkash');
-        if (data.nagadLogo) data.nagadLogo = fixLogo(data.nagadLogo, 'nagad');
-        if (data.rocketLogo) data.rocketLogo = fixLogo(data.rocketLogo, 'rocket');
-        if (data.upayLogo) data.upayLogo = fixLogo(data.upayLogo, 'upay');
-        if (data.visaLogo) data.visaLogo = fixLogo(data.visaLogo, 'visa');
-        if (data.mastercardLogo) data.mastercardLogo = fixLogo(data.mastercardLogo, 'mastercard');
+          // Fix broken Vecteezy and Trust Bank logos that return 403/500
+          const fixLogo = (url: string, name?: string) => {
+            if (!url) return url;
+            const lowerUrl = url.toLowerCase();
+            const lowerName = (name || '').toLowerCase();
 
-        if (data.banks) {
-          data.banks = data.banks.map((bank: any) => ({
-            ...bank,
-            logo: fixLogo(bank.logo, bank.name)
-          }));
+            // If the URL is from a known problematic domain, replace it with a reliable one
+            if (lowerUrl.includes('vecteezy.com') || lowerUrl.includes('tblbd.com') || lowerUrl.includes('oaiusercontent.com')) {
+              if (lowerName.includes('bkash') || lowerUrl.includes('bkash')) 
+                return 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways/logos/bkash.png';
+              if (lowerName.includes('nagad') || lowerUrl.includes('nagad')) 
+                return 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways/logos/nagad.png';
+              if (lowerName.includes('rocket') || lowerUrl.includes('rocket')) 
+                return 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways/logos/rocket.png';
+              if (lowerName.includes('upay') || lowerUrl.includes('upay')) 
+                return 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways/logos/upay.png';
+              if (lowerName.includes('nexus') || lowerName.includes('dbbl') || lowerUrl.includes('nexus') || lowerUrl.includes('dbbl')) 
+                return 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways/logos/dbbl.png';
+              if (lowerName.includes('visa') || lowerUrl.includes('visa')) 
+                return 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways/logos/visa.png';
+              if (lowerName.includes('mastercard') || lowerUrl.includes('mastercard')) 
+                return 'https://cdn.jsdelivr.net/gh/tusharnit/bangladesh-payment-gateways/logos/mastercard.png';
+              if (lowerName.includes('trust bank') || lowerUrl.includes('tbl_logo')) 
+                return 'https://logo.clearbit.com/tblbd.com';
+            }
+            return url;
+          };
+
+          if (data.bkashLogo) data.bkashLogo = fixLogo(data.bkashLogo, 'bkash');
+          if (data.nagadLogo) data.nagadLogo = fixLogo(data.nagadLogo, 'nagad');
+          if (data.rocketLogo) data.rocketLogo = fixLogo(data.rocketLogo, 'rocket');
+          if (data.upayLogo) data.upayLogo = fixLogo(data.upayLogo, 'upay');
+          if (data.visaLogo) data.visaLogo = fixLogo(data.visaLogo, 'visa');
+          if (data.mastercardLogo) data.mastercardLogo = fixLogo(data.mastercardLogo, 'mastercard');
+
+          if (data.banks) {
+            data.banks = data.banks.map((bank: any) => ({
+              ...bank,
+              logo: fixLogo(bank.logo, bank.name)
+            }));
+          }
+
+          if (data.mobileBanking) {
+            data.mobileBanking = data.mobileBanking.map((mb: any) => ({
+              ...mb,
+              logo: fixLogo(mb.logo, mb.name)
+            }));
+          }
+
+          const categories = data.categories && data.categories.length > 0 
+            ? data.categories 
+            : defaultSettings.categories;
+          setSettings({ ...defaultSettings, ...data, categories } as SiteSettings);
         }
-
-        if (data.mobileBanking) {
-          data.mobileBanking = data.mobileBanking.map((mb: any) => ({
-            ...mb,
-            logo: fixLogo(mb.logo, mb.name)
-          }));
-        }
-
-        const categories = data.categories && data.categories.length > 0 
-          ? data.categories 
-          : defaultSettings.categories;
-        setSettings({ ...defaultSettings, ...data, categories } as SiteSettings);
+      } catch (err) {
+        console.error('Error parsing settings snapshot:', err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }, (error) => {
       console.error('Error fetching settings:', error);
       setLoading(false);

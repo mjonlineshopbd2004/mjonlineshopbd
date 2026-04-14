@@ -23,7 +23,8 @@ router.get('/auth/health', async (req, res) => {
       firebase: result,
       resend: {
         configured: resendStatus,
-        message: resendStatus ? 'API Key present' : 'API Key missing'
+        message: resendStatus ? 'API Key present' : 'API Key missing',
+        prefix: process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.substring(0, 5) : null
       }
     });
   } catch (error: any) {

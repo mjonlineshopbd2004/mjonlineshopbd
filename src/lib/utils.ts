@@ -63,14 +63,32 @@ export function getProxyUrl(url: string | null | undefined) {
     'imgbb.com',
     'raw.githubusercontent.com',
     'cdn.jsdelivr.net',
-    'logo.clearbit.com'
+    'logo.clearbit.com',
+    'alicdn.com',
+    '1688.com',
+    'taobao.com',
+    'fbcdn.net',
+    'akamaihd.net',
+    'static.flickr.com',
+    'm.media-amazon.com',
+    'images-na.ssl-images-amazon.com'
   ];
 
   try {
     const urlObj = new URL(normalizedUrl);
-    if (reliableCDNs.some(cdn => urlObj.hostname.includes(cdn))) {
-      return normalizedUrl;
+    
+    // Force HTTPS for all external URLs
+    if (urlObj.protocol === 'http:') {
+      urlObj.protocol = 'https:';
     }
+
+    if (reliableCDNs.some(cdn => urlObj.hostname.includes(cdn))) {
+      return urlObj.toString();
+    }
+    
+    // If it's already a proxy URL, don't proxy again
+    if (urlObj.pathname.includes('/api/proxy-image')) return urlObj.toString();
+
   } catch (e) {
     // If URL parsing fails, just return as is or proxy
   }
@@ -81,6 +99,7 @@ export function getProxyUrl(url: string | null | undefined) {
   // If it's not external, it's probably a local asset
   if (!isExternal) return normalizedUrl;
 
-  // Use relative path for the proxy to avoid origin mismatches
-  return `/api/proxy-image?url=${encodeURIComponent(normalizedUrl)}`;
+  // Use absolute path for the proxy if VITE_API_URL is set (useful for APKs)
+  const apiUrl = import.meta.env.VITE_API_URL || '';
+  return `${apiUrl}/api/proxy-image?url=${encodeURIComponent(normalizedUrl)}`;
 }

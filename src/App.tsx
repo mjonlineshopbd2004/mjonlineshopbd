@@ -51,6 +51,8 @@ import SplashScreen from './components/SplashScreen';
 import FaviconUpdater from './components/FaviconUpdater';
 import ThemeManager from './components/ThemeManager';
 import OfflineNotice from './components/OfflineNotice';
+import ErrorBoundary from './components/ErrorBoundary';
+import PushNotificationManager from './components/PushNotificationManager';
 import { AnimatePresence, motion } from 'motion/react';
 import { useLocation } from 'react-router-dom';
 
@@ -136,23 +138,26 @@ function MainLayout() {
 // Trigger rebuild
 export default function App() {
   return (
-    <AuthProvider>
-      <SettingsProvider>
-        <ThemeManager />
-        <FaviconUpdater />
-        <CartProvider>
-          <WishlistProvider>
-            <CompareProvider>
-              <Router>
-                <SplashScreen />
-                <ScrollToTop />
-                <Toaster position="top-center" richColors />
-                <AnimatedRoutes />
-              </Router>
-            </CompareProvider>
-          </WishlistProvider>
-        </CartProvider>
-      </SettingsProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <SettingsProvider>
+          <ThemeManager />
+          <FaviconUpdater />
+          <CartProvider>
+            <WishlistProvider>
+              <CompareProvider>
+                <Router>
+                  <SplashScreen />
+                  <PushNotificationManager />
+                  <ScrollToTop />
+                  <Toaster position="top-center" richColors />
+                  <AnimatedRoutes />
+                </Router>
+              </CompareProvider>
+            </WishlistProvider>
+          </CartProvider>
+        </SettingsProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

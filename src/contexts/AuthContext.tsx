@@ -148,6 +148,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Failed to send OTP');
       
+      if (data.debug) {
+        console.error('Resend Debug Info:', data.debug);
+        // If there's debug info but it's not a success, it might be a Resend error
+        if (data.message && data.message.includes('Resend Error')) {
+          toast.error(`Resend Error: ${typeof data.debug === 'object' ? JSON.stringify(data.debug) : data.debug}`, {
+            duration: 10000
+          });
+        }
+      }
+      
       if (data.code) {
         toast.info(`Demo OTP Code: ${data.code}`, {
           description: `এটি একটি ডেমো। প্রোডাকশনে এই কোডটি ${email} নাম্বারে ইমেইল যাবে।`,

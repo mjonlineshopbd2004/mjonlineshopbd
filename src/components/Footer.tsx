@@ -1,12 +1,45 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Facebook, Instagram, Twitter, Youtube, Phone, Mail, MapPin } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Facebook, Instagram, Twitter, Youtube, Phone, Mail, MapPin, Download, Headphones } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 import { cn, getProxyUrl, triggerHaptic } from '../lib/utils';
+import { toast } from 'sonner';
 
 export default function Footer() {
   const { settings } = useSettings();
-  const [logoError, setLogoError] = React.useState(false);
+  const [logoError, setLogoError] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallApp = async () => {
+    triggerHaptic('heavy');
+    
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    } else {
+      // Fallback: If PWA prompt is not available, inform user or provide APK link
+      toast.info('Install MJ SHOP App', {
+        description: 'To install, click the three dots in your browser and select "Install App" or "Add to Home Screen".',
+        action: {
+          label: 'Got it',
+          onClick: () => {}
+        }
+      });
+    }
+  };
 
   return (
     <footer className="bg-gray-900 text-gray-300 pt-16 pb-8 border-t border-gray-800">
@@ -32,11 +65,37 @@ export default function Footer() {
             <p className="text-gray-400 mb-6 leading-relaxed">
               {settings.storeName} is your ultimate destination for fashion, electronics, and accessories in Bangladesh. We provide quality products with fast delivery.
             </p>
-            <div className="flex space-x-4">
+            <div className="flex space-x-4 mb-8">
               {settings.facebook && <a href={settings.facebook} onClick={() => triggerHaptic('light')} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors"><Facebook className="h-5 w-5" /></a>}
               {settings.instagram && <a href={settings.instagram} onClick={() => triggerHaptic('light')} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors"><Instagram className="h-5 w-5" /></a>}
               {settings.twitter && <a href={settings.twitter} onClick={() => triggerHaptic('light')} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors"><Twitter className="h-5 w-5" /></a>}
               {settings.youtube && <a href={settings.youtube} onClick={() => triggerHaptic('light')} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors"><Youtube className="h-5 w-5" /></a>}
+            </div>
+
+            {/* App & Chat Buttons */}
+            <div className="flex gap-4">
+              <button 
+                onClick={handleInstallApp}
+                className="flex flex-col items-center justify-center bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 rounded-2xl p-4 min-w-[100px] transition-all group"
+              >
+                <div className="bg-white/5 p-2 rounded-xl mb-2 group-hover:scale-110 transition-transform">
+                  <Download className="h-6 w-6 text-white" />
+                </div>
+                <span className="text-[11px] font-bold text-white uppercase tracking-wider">Get App</span>
+              </button>
+
+              <button 
+                onClick={() => {
+                  triggerHaptic('medium');
+                  navigate('/support');
+                }}
+                className="flex flex-col items-center justify-center bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 rounded-2xl p-4 min-w-[100px] transition-all group"
+              >
+                <div className="bg-white/5 p-2 rounded-xl mb-2 group-hover:scale-110 transition-transform">
+                  <Headphones className="h-6 w-6 text-white" />
+                </div>
+                <span className="text-[11px] font-bold text-white uppercase tracking-wider">Chat</span>
+              </button>
             </div>
           </div>
 

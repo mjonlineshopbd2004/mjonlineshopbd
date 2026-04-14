@@ -62,6 +62,7 @@ async function startServer() {
   });
 
   console.log('GEMINI_API_KEY present:', !!process.env.GEMINI_API_KEY);
+  console.log('RESEND_API_KEY present:', !!process.env.RESEND_API_KEY);
 
   // API Routes
   console.log('Registering API routes...');
