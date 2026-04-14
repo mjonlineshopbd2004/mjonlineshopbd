@@ -30,14 +30,28 @@ export default function Footer() {
         setDeferredPrompt(null);
       }
     } else {
-      // Fallback: If PWA prompt is not available, inform user or provide APK link
-      toast.info('Install MJ SHOP App', {
-        description: 'To install, click the three dots in your browser and select "Install App" or "Add to Home Screen".',
-        action: {
-          label: 'Got it',
-          onClick: () => {}
-        }
-      });
+      // Check if already installed
+      if (window.matchMedia('(display-mode: standalone)').matches) {
+        toast.success('App already installed!', {
+          description: 'You are already using the app version.'
+        });
+        return;
+      }
+
+      // Fallback: Instructions for different browsers
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+      
+      if (isIOS) {
+        toast.info('Install on iPhone/iPad', {
+          description: 'Click the "Share" button (square with arrow) and select "Add to Home Screen".',
+          duration: 6000
+        });
+      } else {
+        toast.info('Install MJ SHOP App', {
+          description: 'Click the three dots (⋮) in Chrome and select "Install App" or "Add to Home Screen".',
+          duration: 6000
+        });
+      }
     }
   };
 

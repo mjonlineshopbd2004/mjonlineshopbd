@@ -12,6 +12,7 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
+        injectRegister: 'auto',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
         manifest: {
           name: 'MJ ONLINE SHOP BD',
@@ -23,6 +24,7 @@ export default defineConfig(({mode}) => {
           orientation: 'portrait',
           scope: '/',
           start_url: '/',
+          id: '/',
           icons: [
             {
               src: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&q=80&w=192&h=192',
