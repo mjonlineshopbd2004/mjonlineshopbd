@@ -23,6 +23,17 @@ export default function Footer() {
   const handleInstallApp = async () => {
     triggerHaptic('heavy');
     
+    // If you have a direct APK download link, you can put it here
+    const apkDownloadUrl = ''; // TODO: Add your APK download link here
+    
+    if (apkDownloadUrl) {
+      window.open(apkDownloadUrl, '_blank');
+      toast.success('Downloading APK...', {
+        description: 'Please check your downloads folder to install the app.'
+      });
+      return;
+    }
+
     if (deferredPrompt) {
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
