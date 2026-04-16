@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { collection, query, getDocs, updateDoc, doc, orderBy } from 'firebase/firestore';
+import React, { useEffect, useState, useRef } from 'react';
+import { collection, query, onSnapshot, updateDoc, doc, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { UserProfile, UserRole } from '../types';
 import { Search, User, Shield, ShieldAlert, Mail, Phone, Calendar, ChevronDown } from 'lucide-react';
@@ -10,29 +10,39 @@ export default function AdminUsers() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-
-  const fetchUsers = async () => {
-    setLoading(true);
-    try {
-      const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
-      const querySnapshot = await getDocs(q);
-      setUsers(querySnapshot.docs.map(doc => ({ ...doc.data() } as UserProfile)));
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      toast.error('Failed to fetch users');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchUsers();
+    setLoading(true);
+    const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
+    
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      setUsers(querySnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile)));
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching users:", error);
+      toast.error('Failed to fetch users');
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setActiveDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleRoleChange = async (uid: string, newRole: UserRole) => {
     try {
       await updateDoc(doc(db, 'users', uid), { role: newRole });
-      setUsers(users.map(u => u.uid === uid ? { ...u, role: newRole } : u));
+      setActiveDropdown(null);
       toast.success(`User role updated to ${newRole}`);
     } catch (error) {
       console.error("Error updating role:", error);
@@ -132,29 +142,41 @@ export default function AdminUsers() {
                     </div>
                   </td>
                   <td className="px-8 py-6 text-right">
-                    <div className="relative group inline-block">
-                      <button className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all text-gray-400 hover:text-white">
+                    <div className="relative inline-block" ref={activeDropdown === user.uid ? dropdownRef : null}>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveDropdown(activeDropdown === user.uid ? null : user.uid);
+                        }}
+                        className={cn(
+                          "flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all",
+                          activeDropdown === user.uid ? "text-white border-primary/50 bg-primary/10" : "text-gray-400 hover:text-white"
+                        )}
+                      >
                         <span>Change Role</span>
-                        <ChevronDown className="h-4 w-4" />
+                        <ChevronDown className={cn("h-4 w-4 transition-transform", activeDropdown === user.uid && "rotate-180")} />
                       </button>
-                      <div className="absolute right-0 mt-2 w-48 bg-[#111111] border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                        <div className="py-2">
-                          <button
-                            onClick={() => handleRoleChange(user.uid, 'admin')}
-                            className="flex items-center w-full px-4 py-3 text-xs text-gray-400 hover:bg-white/5 hover:text-primary font-black uppercase tracking-widest transition-colors"
-                          >
-                            <Shield className="h-4 w-4 mr-2" />
-                            Make Admin
-                          </button>
-                          <button
-                            onClick={() => handleRoleChange(user.uid, 'customer')}
-                            className="flex items-center w-full px-4 py-3 text-xs text-gray-400 hover:bg-white/5 hover:text-blue-500 font-black uppercase tracking-widest transition-colors"
-                          >
-                            <User className="h-4 w-4 mr-2" />
-                            Make Customer
-                          </button>
+                      
+                      {activeDropdown === user.uid && (
+                        <div className="absolute right-0 mt-2 w-48 bg-[#111111] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                          <div className="py-2">
+                            <button
+                              onClick={() => handleRoleChange(user.uid, 'admin')}
+                              className="flex items-center w-full px-4 py-3 text-xs text-gray-400 hover:bg-white/5 hover:text-primary font-black uppercase tracking-widest transition-colors"
+                            >
+                              <Shield className="h-4 w-4 mr-2" />
+                              Make Admin
+                            </button>
+                            <button
+                              onClick={() => handleRoleChange(user.uid, 'customer')}
+                              className="flex items-center w-full px-4 py-3 text-xs text-gray-400 hover:bg-white/5 hover:text-blue-500 font-black uppercase tracking-widest transition-colors"
+                            >
+                              <User className="h-4 w-4 mr-2" />
+                              Make Customer
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </td>
                 </tr>

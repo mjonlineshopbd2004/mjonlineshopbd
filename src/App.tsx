@@ -121,7 +121,7 @@ function MainLayout() {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <Navbar />
-      <main className="flex-grow pt-[48px] md:pt-[100px] pb-14 md:pb-0">
+      <main className="flex-grow pt-[80px] md:pt-[200px] pb-14 md:pb-0">
         <Outlet />
       </main>
       <Footer />

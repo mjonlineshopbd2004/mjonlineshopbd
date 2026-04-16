@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { collection, query, getDocs, updateDoc, doc, orderBy } from 'firebase/firestore';
+import { collection, query, getDocs, updateDoc, doc, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Order, OrderStatus } from '../types';
 import { formatPrice, getProxyUrl } from '../lib/utils';
@@ -183,21 +183,33 @@ export default function AdminOrders() {
     }, 100);
   };
 
-  const fetchOrders = async () => {
-    setLoading(true);
-    try {
-      const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
-      const querySnapshot = await getDocs(q);
-      setOrders(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order)));
-    } catch (error) {
-      console.error("Error fetching orders:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [openUpdateStatusDropdown, setOpenUpdateStatusDropdown] = useState(false);
+  const updateStatusRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchOrders();
+    setLoading(true);
+    const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+    
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      setOrders(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order)));
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching orders:", error);
+      toast.error('Failed to fetch orders');
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (updateStatusRef.current && !updateStatusRef.current.contains(event.target as Node)) {
+        setOpenUpdateStatusDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
@@ -207,10 +219,10 @@ export default function AdminOrders() {
         updateData.paymentStatus = 'pending';
       }
       await updateDoc(doc(db, 'orders', orderId), updateData);
-      setOrders(orders.map(o => o.id === orderId ? { ...o, ...updateData } : o));
       if (selectedOrder?.id === orderId) {
         setSelectedOrder({ ...selectedOrder, ...updateData });
       }
+      setOpenUpdateStatusDropdown(false);
       toast.success(`Order status updated to ${newStatus}`);
     } catch (error) {
       toast.error('Failed to update order status');
@@ -686,24 +698,42 @@ export default function AdminOrders() {
                     Mark as Paid
                   </button>
                 )}
-                <div className="relative group">
-                  <button className="bg-primary-dark text-white px-8 py-4 rounded-xl font-black hover:bg-primary transition-all flex items-center gap-2 shadow-lg shadow-primary-dark/20">
+                <div className="relative" ref={updateStatusRef}>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenUpdateStatusDropdown(!openUpdateStatusDropdown);
+                    }}
+                    className="bg-primary-dark text-white px-8 py-4 rounded-xl font-black hover:bg-primary transition-all flex items-center gap-2 shadow-lg shadow-primary-dark/20"
+                  >
                     <span>Update Status</span>
-                    <ChevronDown className="h-5 w-5" />
+                    <ChevronDown className={cn("h-5 w-5 transition-transform", openUpdateStatusDropdown && "rotate-180")} />
                   </button>
-                  <div className="absolute bottom-full right-0 mb-2 w-48 bg-[#111111] border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
-                    <div className="py-2">
-                      {(['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'] as OrderStatus[]).map((status) => (
-                        <button
-                          key={status}
-                          onClick={() => handleStatusChange(selectedOrder.id, status)}
-                          className="flex items-center w-full px-4 py-3 text-xs text-gray-400 hover:bg-white/5 hover:text-primary capitalize font-black transition-colors"
-                        >
-                          {status}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  <AnimatePresence>
+                    {openUpdateStatusDropdown && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute bottom-full right-0 mb-2 w-48 bg-[#111111] border border-white/10 rounded-xl shadow-2xl z-20 overflow-hidden"
+                      >
+                        <div className="py-2">
+                          {(['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'] as OrderStatus[]).map((status) => (
+                            <button
+                              key={status}
+                              onClick={() => handleStatusChange(selectedOrder.id, status)}
+                              className={cn(
+                                "flex items-center w-full px-4 py-3 text-xs capitalize font-black transition-colors",
+                                selectedOrder.status === status ? "bg-primary/10 text-primary" : "text-gray-400 hover:bg-white/5 hover:text-white"
+                              )}
+                            >
+                              {status}
+                            </button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
             </motion.div>

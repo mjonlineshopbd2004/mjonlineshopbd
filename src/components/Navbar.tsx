@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   ShoppingCart, 
@@ -40,7 +40,23 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [logoError, setLogoError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setLogoError(false);
+  }, [settings.logoUrl]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (accountRef.current && !accountRef.current.contains(event.target as Node)) {
+        setIsAccountOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleImageSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -64,17 +80,14 @@ export default function Navbar() {
 
       const base64Data = await base64Promise;
 
-      const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
+      const genAI = new GoogleGenAI({ apiKey });
+      const response = await genAI.models.generateContent({
         model: "gemini-1.5-flash",
         contents: {
           parts: [
             { text: "Identify the fashion item in this image. Provide a list of 5-8 highly relevant English keywords that would likely appear in an e-commerce product title or description (e.g., 'leather handbag', 'blue denim jacket', 'silk saree'). Focus on specific attributes like color, material, and style. Output only the keywords separated by spaces, no punctuation." },
             { inlineData: { mimeType: file.type, data: base64Data } }
           ]
-        },
-        config: {
-          maxOutputTokens: 100,
         }
       });
 
@@ -123,31 +136,34 @@ export default function Navbar() {
       </div> */}
 
       {/* Main Header */}
-      <div className="py-1.5 md:py-2">
+      <div className="py-2 md:py-4">
         <div className="container-custom flex items-center justify-between gap-3 md:gap-4">
           {/* Logo */}
-          <Link to="/" onClick={() => triggerHaptic('medium')} className="flex-shrink-0">
+          <Link to="/" onClick={() => triggerHaptic('medium')} className="flex-shrink-0 flex items-center gap-2.5 group">
             {settings.logoUrl && !logoError ? (
               <img 
                 src={getProxyUrl(settings.logoUrl)} 
                 alt={settings.storeName} 
-                className="h-7 md:h-8 w-auto" 
+                className="h-10 md:h-14 w-auto transition-transform group-hover:scale-105" 
                 onError={() => setLogoError(true)}
               />
             ) : (
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 md:w-8 md:h-8 bg-primary rounded-lg md:rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
-                  <ShoppingBag className="h-4 w-4 md:h-5 md:w-5" />
-                </div>
-                <span className="font-black text-gray-900 text-sm md:text-base tracking-tighter uppercase hidden sm:block">
-                  {settings.storeName}
-                </span>
+              <div className="w-10 h-10 md:w-14 md:h-14 bg-primary rounded-lg md:rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20 group-hover:rotate-6 transition-transform">
+                <ShoppingBag className="h-6 w-6 md:h-8 md:w-8" />
               </div>
             )}
+            <div className="hidden sm:flex flex-col">
+              <span className="font-black text-gray-900 text-[11px] md:text-[15px] tracking-[0.05em] uppercase leading-none whitespace-nowrap">
+                {settings.storeName}
+              </span>
+              <span className="text-[7px] md:text-[8px] font-bold text-primary tracking-[0.3em] uppercase mt-0.5 opacity-80">
+                Premium Store
+              </span>
+            </div>
           </Link>
 
           {/* Search - Mobile compact */}
-          <div className="flex-1 max-w-md">
+          <div className="flex-1 max-w-md ml-4 md:ml-12">
             <form onSubmit={handleSearch} className="relative flex items-center">
               <div className="absolute left-3 text-gray-400">
                 <Search className="h-3.5 w-3.5" />
@@ -198,9 +214,15 @@ export default function Navbar() {
               </Link>
             )}
             {user ? (
-              <div className="relative group/account">
+              <div className="relative" ref={accountRef}>
                 <div className="flex items-center gap-2">
-                  <Link to="/profile" className="nav-action-card group">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsAccountOpen(!isAccountOpen);
+                    }}
+                    className="nav-action-card group"
+                  >
                     <div className="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
                       <User className="h-3.5 w-3.5 text-gray-500 group-hover:text-primary" />
                     </div>
@@ -210,27 +232,40 @@ export default function Navbar() {
                         {profile?.displayName?.split(' ')[0] || 'Profile'}
                       </p>
                     </div>
-                  </Link>
-                </div>
-                
-                <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl py-2 opacity-0 invisible group-hover/account:opacity-100 group-hover/account:visible transition-all z-50">
-                  <Link to="/profile" className="flex items-center gap-3 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors">
-                    <User className="h-4 w-4" />
-                    My Profile
-                  </Link>
-                  <Link to="/orders" className="flex items-center gap-3 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors">
-                    <ShoppingCart className="h-4 w-4" />
-                    My Orders
-                  </Link>
-                  <div className="h-px bg-gray-100 my-2 mx-4" />
-                  <button 
-                    onClick={() => logout()}
-                    className="w-full flex items-center gap-3 px-4 py-2 text-sm font-bold text-red-500 hover:bg-red-50 transition-colors"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Logout
                   </button>
                 </div>
+                
+                {isAccountOpen && (
+                  <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <Link 
+                      to="/profile" 
+                      onClick={() => setIsAccountOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors"
+                    >
+                      <User className="h-4 w-4" />
+                      My Profile
+                    </Link>
+                    <Link 
+                      to="/orders" 
+                      onClick={() => setIsAccountOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors"
+                    >
+                      <ShoppingCart className="h-4 w-4" />
+                      My Orders
+                    </Link>
+                    <div className="h-px bg-gray-100 my-2 mx-4" />
+                    <button 
+                      onClick={() => {
+                        logout();
+                        setIsAccountOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm font-bold text-red-500 hover:bg-red-50 transition-colors"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Logout
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <button 
@@ -290,7 +325,10 @@ export default function Navbar() {
             {/* Categories Dropdown */}
             <div className="relative h-full">
               <button 
-                onClick={() => setIsCategoriesOpen(!isCategoriesOpen)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsCategoriesOpen(!isCategoriesOpen);
+                }}
                 className="bg-primary hover:bg-primary-dark text-white px-6 h-full flex items-center gap-3 font-bold text-sm transition-all min-w-[240px]"
               >
                 <Menu className="h-5 w-5" />

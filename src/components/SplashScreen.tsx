@@ -5,11 +5,23 @@ import { getProxyUrl } from '../lib/utils';
 
 export default function SplashScreen() {
   const { settings, loading } = useSettings();
-  const [isVisible, setIsVisible] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
   const [logoError, setLogoError] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    // Minimum 2 seconds display time
+    // Check if mobile on mount
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setIsVisible(true);
+      }
+    };
+
+    checkMobile();
+
+    // Minimum 2 seconds display time if visible
     const timer = setTimeout(() => {
       if (!loading) {
         setIsVisible(false);

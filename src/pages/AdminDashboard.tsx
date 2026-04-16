@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, orderBy, limit, getDocs, where, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, where, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Order, Product } from '../types';
 import { formatPrice, cn } from '../lib/utils';
@@ -64,74 +64,96 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const now = new Date();
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const startOfYesterday = new Date(startOfToday);
-        startOfYesterday.setDate(startOfYesterday.getDate() - 1);
-        const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+    setLoading(true);
+    
+    // Set up listeners for all collections
+    const unsubOrders = onSnapshot(collection(db, 'orders'), (snapshot) => {
+      const allOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+      
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const startOfYesterday = new Date(startOfToday);
+      startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+      const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
-        const ordersRef = collection(db, 'orders');
-        const ordersSnap = await getDocs(ordersRef);
-        const allOrders = ordersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+      const getRevenue = (orders: Order[]) => orders.filter(o => o.status !== 'cancelled').reduce((acc, o) => acc + o.total, 0);
+      const getOrderDate = (o: Order) => {
+        if (typeof o.createdAt === 'string') return new Date(o.createdAt);
+        // @ts-ignore
+        if (o.createdAt?.toDate) return o.createdAt.toDate();
+        return new Date();
+      };
 
-        const productsSnap = await getDocs(collection(db, 'products'));
-        const usersSnap = await getDocs(collection(db, 'users'));
-        const categoriesSnap = await getDocs(collection(db, 'categories'));
-        const couponsSnap = await getDocs(collection(db, 'coupons'));
-        const reviewsSnap = await getDocs(collection(db, 'reviews'));
+      const todayOrders = allOrders.filter(o => getOrderDate(o) >= startOfToday);
+      const yesterdayOrders = allOrders.filter(o => getOrderDate(o) >= startOfYesterday && getOrderDate(o) < startOfToday);
+      const thisMonthOrders = allOrders.filter(o => getOrderDate(o) >= startOfThisMonth);
+      const lastMonthOrders = allOrders.filter(o => getOrderDate(o) >= startOfLastMonth && getOrderDate(o) <= endOfLastMonth);
 
-        const getRevenue = (orders: Order[]) => orders.filter(o => o.status !== 'cancelled').reduce((acc, o) => acc + o.total, 0);
+      setStats(prev => ({
+        ...prev,
+        todayRevenue: getRevenue(todayOrders),
+        todayOrders: todayOrders.length,
+        pendingOrders: allOrders.filter(o => o.status === 'pending').length,
+        yesterdayRevenue: getRevenue(yesterdayOrders),
+        yesterdayOrders: yesterdayOrders.length,
+        thisMonthRevenue: getRevenue(thisMonthOrders),
+        thisMonthOrders: thisMonthOrders.length,
+        lastMonthRevenue: getRevenue(lastMonthOrders),
+        lastMonthOrders: lastMonthOrders.length,
+        allTimeRevenue: getRevenue(allOrders),
+        allTimeOrders: allOrders.length,
+        processingOrders: allOrders.filter(o => o.status === 'processing').length,
+        deliveredOrders: allOrders.filter(o => o.status === 'delivered').length,
+      }));
 
-        const getOrderDate = (o: Order) => {
-          if (typeof o.createdAt === 'string') return new Date(o.createdAt);
-          // @ts-ignore
-          if (o.createdAt?.toDate) return o.createdAt.toDate();
-          return new Date();
-        };
+      // Update recent orders
+      const sorted = [...allOrders].sort((a, b) => {
+        const dateA = getOrderDate(a).getTime();
+        const dateB = getOrderDate(b).getTime();
+        return dateB - dateA;
+      });
+      setRecentOrders(sorted.slice(0, 5));
+      setLoading(false);
+    });
 
-        const todayOrders = allOrders.filter(o => getOrderDate(o) >= startOfToday);
-        const yesterdayOrders = allOrders.filter(o => getOrderDate(o) >= startOfYesterday && getOrderDate(o) < startOfToday);
-        const thisMonthOrders = allOrders.filter(o => getOrderDate(o) >= startOfThisMonth);
-        const lastMonthOrders = allOrders.filter(o => getOrderDate(o) >= startOfLastMonth && getOrderDate(o) <= endOfLastMonth);
+    const unsubProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
+      setStats(prev => ({ ...prev, totalProducts: snapshot.size }));
+    });
 
-        setStats({
-          todayRevenue: getRevenue(todayOrders),
-          todayOrders: todayOrders.length,
-          pendingOrders: allOrders.filter(o => o.status === 'pending').length,
-          totalUsers: usersSnap.size,
-          yesterdayRevenue: getRevenue(yesterdayOrders),
-          yesterdayOrders: yesterdayOrders.length,
-          thisMonthRevenue: getRevenue(thisMonthOrders),
-          thisMonthOrders: thisMonthOrders.length,
-          lastMonthRevenue: getRevenue(lastMonthOrders),
-          lastMonthOrders: lastMonthOrders.length,
-          allTimeRevenue: getRevenue(allOrders),
-          allTimeOrders: allOrders.length,
-          processingOrders: allOrders.filter(o => o.status === 'processing').length,
-          deliveredOrders: allOrders.filter(o => o.status === 'delivered').length,
-          totalProducts: productsSnap.size,
-          totalCategories: categoriesSnap.size,
-          totalCoupons: couponsSnap.size,
-          totalReviews: reviewsSnap.size,
-          totalDocuments: ordersSnap.size + productsSnap.size + usersSnap.size + categoriesSnap.size + couponsSnap.size + reviewsSnap.size
-        });
+    const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+      setStats(prev => ({ ...prev, totalUsers: snapshot.size }));
+    });
 
-        const recentQuery = query(ordersRef, orderBy('createdAt', 'desc'), limit(5));
-        const recentSnap = await getDocs(recentQuery);
-        setRecentOrders(recentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order)));
-      } catch (error) {
-        console.error('Error fetching dashboard stats:', error);
-      } finally {
-        setLoading(false);
-      }
+    const unsubCategories = onSnapshot(collection(db, 'categories'), (snapshot) => {
+      setStats(prev => ({ ...prev, totalCategories: snapshot.size }));
+    });
+
+    const unsubCoupons = onSnapshot(collection(db, 'coupons'), (snapshot) => {
+      setStats(prev => ({ ...prev, totalCoupons: snapshot.size }));
+    });
+
+    const unsubReviews = onSnapshot(collection(db, 'reviews'), (snapshot) => {
+      setStats(prev => ({ ...prev, totalReviews: snapshot.size }));
+    });
+
+    return () => {
+      unsubOrders();
+      unsubProducts();
+      unsubUsers();
+      unsubCategories();
+      unsubCoupons();
+      unsubReviews();
     };
-
-    fetchStats();
   }, []);
+
+  useEffect(() => {
+    setStats(prev => ({
+      ...prev,
+      totalDocuments: prev.allTimeOrders + prev.totalProducts + prev.totalUsers + prev.totalCategories + prev.totalCoupons + prev.totalReviews
+    }));
+  }, [stats.allTimeOrders, stats.totalProducts, stats.totalUsers, stats.totalCategories, stats.totalCoupons, stats.totalReviews]);
 
   if (loading) {
     return (

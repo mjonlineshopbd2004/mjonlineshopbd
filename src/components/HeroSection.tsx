@@ -9,6 +9,12 @@ export default function HeroSection() {
   const { settings } = useSettings();
   const [bannerError, setBannerError] = React.useState(false);
   const [smallBannerError, setSmallBannerError] = React.useState(false);
+  
+  React.useEffect(() => {
+    setBannerError(false);
+    setSmallBannerError(false);
+  }, [settings.banners, settings.smallBanners]);
+
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [smallBannerIndex, setSmallBannerIndex] = React.useState(0);
   const banners = settings.banners || [];
@@ -106,10 +112,10 @@ export default function HeroSection() {
               )}
               <Link
                 to={currentBanner.link || "/products"}
-                className="inline-flex items-center justify-center px-3 py-1 md:px-10 md:py-4 bg-primary text-white font-black text-[7px] md:text-lg hover:bg-primary-dark transition-all shadow-xl shadow-primary/30 group/btn rounded-full font-sans uppercase tracking-widest"
+                className="inline-flex items-center justify-center px-4 py-2 md:px-8 md:py-3.5 bg-primary text-white font-black text-[8px] md:text-base hover:bg-primary-dark transition-all shadow-[0_4px_0_#9d1a46] hover:shadow-[0_6px_0_#9d1a46] hover:-translate-y-1 active:translate-y-0.5 active:shadow-none group/btn rounded-lg font-sans uppercase tracking-widest"
               >
                 Shop Now
-                <ArrowRight className="ml-1 h-2 w-2 md:h-5 md:w-5 group-hover/btn:translate-x-1 transition-transform" />
+                <ArrowRight className="ml-1.5 h-2.5 w-2.5 md:h-5 md:w-5 group-hover/btn:translate-x-1 transition-transform" />
               </Link>
             </motion.div>
           </div>

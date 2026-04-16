@@ -64,14 +64,10 @@ export function getProxyUrl(url: string | null | undefined) {
     'raw.githubusercontent.com',
     'cdn.jsdelivr.net',
     'logo.clearbit.com',
-    'alicdn.com',
-    '1688.com',
     'taobao.com',
     'fbcdn.net',
     'akamaihd.net',
-    'static.flickr.com',
-    'm.media-amazon.com',
-    'images-na.ssl-images-amazon.com'
+    'static.flickr.com'
   ];
 
   try {

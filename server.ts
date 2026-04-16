@@ -146,15 +146,15 @@ async function startServer() {
       };
 
       let referer = '';
-      if (imageUrl.includes('alicdn.com') || imageUrl.includes('1688.com')) {
+      if (imageUrl.includes('alicdn.com') || imageUrl.includes('1688.com') || imageUrl.includes('taobao.com') || imageUrl.includes('tmall.com')) {
         referer = 'https://www.1688.com/';
-      } else if (imageUrl.includes('amazon.com')) {
+      } else if (imageUrl.includes('amazon.com') || imageUrl.includes('media-amazon.com')) {
         referer = 'https://www.amazon.com/';
-      } else if (imageUrl.includes('daraz.com') || imageUrl.includes('slatic.net') || imageUrl.includes('laz-img')) {
+      } else if (imageUrl.includes('daraz.com') || imageUrl.includes('slatic.net') || imageUrl.includes('laz-img') || imageUrl.includes('lazada')) {
         referer = 'https://www.daraz.com.bd/';
       } else if (imageUrl.includes('facebook.com') || imageUrl.includes('fbcdn.net')) {
         referer = 'https://www.facebook.com/';
-      } else if (imageUrl.includes('googleusercontent.com')) {
+      } else if (imageUrl.includes('googleusercontent.com') || imageUrl.includes('google.com')) {
         referer = 'https://www.google.com/';
       } else if (imageUrl.includes('vecteezy.com')) {
         referer = 'https://www.vecteezy.com/';
@@ -162,6 +162,10 @@ async function startServer() {
         referer = 'https://www.tblbd.com/';
       } else if (imageUrl.includes('githubusercontent.com')) {
         referer = 'https://github.com/';
+      } else if (imageUrl.includes('cloudinary.com')) {
+        referer = 'https://cloudinary.com/';
+      } else if (imageUrl.includes('imgbb.com')) {
+        referer = 'https://imgbb.com/';
       }
 
       let response = await fetchImage(imageUrl, referer);

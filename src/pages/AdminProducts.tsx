@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, getDocs, deleteDoc, doc, orderBy, updateDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, deleteDoc, doc, orderBy, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Product } from '../types';
 import { formatPrice, cn, getProxyUrl } from '../lib/utils';
@@ -16,24 +16,23 @@ export default function AdminProducts() {
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  const fetchProducts = async () => {
+  useEffect(() => {
     setLoading(true);
-    try {
-      const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
-      const querySnapshot = await getDocs(q);
+    const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
+    
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
       setProducts(querySnapshot.docs.map(doc => {
         const data = doc.data();
         return { ...data, id: doc.id } as Product;
       }));
-    } catch (error) {
-      console.error("Error fetching products:", error);
-    } finally {
       setLoading(false);
-    }
-  };
+    }, (error) => {
+      console.error("Error fetching products:", error);
+      toast.error('Failed to fetch products');
+      setLoading(false);
+    });
 
-  useEffect(() => {
-    fetchProducts();
+    return () => unsubscribe();
   }, []);
 
   const handleDelete = async (id: string) => {
@@ -54,7 +53,6 @@ export default function AdminProducts() {
         throw new Error(errorData.message || 'Failed to delete product');
       }
 
-      setProducts(prev => prev.filter(p => p.id !== id));
       toast.success('Product deleted successfully');
       setDeleteConfirmId(null);
     } catch (error: any) {
@@ -104,8 +102,6 @@ export default function AdminProducts() {
       };
 
       await updateDoc(doc(db, 'products', product.id), updatedData);
-      
-      setProducts(prev => prev.map(p => p.id === product.id ? { ...p, ...updatedData } : p));
       toast.success(`Synced: ${product.name}`);
     } catch (error: any) {
       console.error('Sync error:', error);

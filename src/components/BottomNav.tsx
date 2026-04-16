@@ -12,6 +12,11 @@ export default function BottomNav() {
   const { totalItems } = useCart();
   const { items: wishlistItems } = useWishlist();
   const [logoError, setLogoError] = React.useState(false);
+  
+  React.useEffect(() => {
+    setLogoError(false);
+  }, [settings.logoUrl]);
+
   const hideOnPaths = ['/checkout', '/payment'];
   const shouldHide = hideOnPaths.includes(location.pathname);
 
@@ -26,7 +31,7 @@ export default function BottomNav() {
   ];
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-gradient-to-r from-indigo-600/70 via-purple-600/70 to-pink-600/70 backdrop-blur-xl z-50 px-2 py-0.5 border-t border-white/20 shadow-[0_-4px_20px_rgba(0,0,0,0.2)]">
+    <div className="md:hidden lg:hidden fixed bottom-0 left-0 right-0 bg-gradient-to-r from-indigo-600/70 via-purple-600/70 to-pink-600/70 backdrop-blur-xl z-50 px-2 py-0.5 border-t border-white/20 shadow-[0_-4px_20px_rgba(0,0,0,0.2)]">
       <div className="flex justify-around items-center h-14">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;

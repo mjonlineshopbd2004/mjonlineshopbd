@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, getDocs, orderBy, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Review, Product } from '../types';
 import { Search, Filter, Star, Trash2, Eye, Loader2, Package, User, Calendar, X, AlertTriangle } from 'lucide-react';
@@ -16,32 +16,33 @@ export default function AdminReviews() {
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [reviewToDelete, setReviewToDelete] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  useEffect(() => {
     setLoading(true);
-    try {
-      // Fetch reviews
-      const reviewsQuery = query(collection(db, 'reviews'), orderBy('createdAt', 'desc'));
-      const reviewsSnap = await getDocs(reviewsQuery);
-      const reviewsData = reviewsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Review));
-      setReviews(reviewsData);
+    
+    // Listen for reviews
+    const reviewsQuery = query(collection(db, 'reviews'), orderBy('createdAt', 'desc'));
+    const unsubReviews = onSnapshot(reviewsQuery, (snapshot) => {
+      setReviews(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Review)));
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching reviews:", error);
+      toast.error('Failed to load reviews');
+      setLoading(false);
+    });
 
-      // Fetch all products to get names and IDs
-      const productsSnap = await getDocs(collection(db, 'products'));
+    // Listen for products
+    const unsubProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
       const productsData: Record<string, Product> = {};
-      productsSnap.docs.forEach(doc => {
+      snapshot.docs.forEach(doc => {
         productsData[doc.id] = { id: doc.id, ...doc.data() } as Product;
       });
       setProducts(productsData);
-    } catch (error) {
-      console.error("Error fetching reviews:", error);
-      toast.error('Failed to load reviews');
-    } finally {
-      setLoading(false);
-    }
-  };
+    });
 
-  useEffect(() => {
-    fetchData();
+    return () => {
+      unsubReviews();
+      unsubProducts();
+    };
   }, []);
 
   const handleDeleteReview = (reviewId: string) => {
